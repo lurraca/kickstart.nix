@@ -1,3 +1,4 @@
+{username}: {pkgs, ...}:
 {
   # add more system settings here
   nix = {
@@ -22,6 +23,11 @@
   };
 
   programs.zsh.enable = true;
+
+  users.users.${username} = {
+    home = "/Users/${username}";
+    shell = pkgs.zsh;
+  };
 
   nixpkgs = {
     config = {

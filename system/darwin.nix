@@ -2,7 +2,7 @@
   inputs,
   username,
 }: system: let
-  system-config = import ../module/configuration.nix;
+  system-config = import ../module/configuration.nix {inherit username;};
   home-manager-config = import ../module/home-manager.nix;
 in
   inputs.darwin.lib.darwinSystem {
