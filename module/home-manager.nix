@@ -3,6 +3,7 @@
   home.packages = with pkgs; [];
   home.stateVersion = "23.11";
 
+  home.sessionVariables = {
 
   programs.bat = {
     enable = true;
@@ -23,6 +24,19 @@
   programs.jq = {
     enable = true;
   };
+
+  programs.tmux = {
+    enable = true;
+    historyLimit = 10000;
+    mouse = true;
+
+    extraConfig = ''
+      unbind C-b
+      set -g prefix C-a
+      bind C-a send-prefix
+    '';
+  };
+
   programs.zsh = {
     enable = true;
     enableAutosuggestions = true;
