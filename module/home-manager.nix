@@ -1,6 +1,6 @@
 {pkgs, ...}: {
   # add home-manager user settings here
-  home.packages = with pkgs; [];
+  home.packages = with pkgs; [_1password _1password-gui fira-code jrnl];
   home.stateVersion = "23.11";
 
   home.sessionVariables = {
