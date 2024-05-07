@@ -15,6 +15,10 @@
   programs.bottom = {
     enable = true;
   };
+
+  programs.gh = {
+    enable = true;
+  };
   programs.zsh = {
     enable = true;
     enableAutosuggestions = true;
