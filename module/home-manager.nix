@@ -12,6 +12,9 @@
     };
   };
 
+  programs.bottom = {
+    enable = true;
+  };
   programs.zsh = {
     enable = true;
     enableAutosuggestions = true;
