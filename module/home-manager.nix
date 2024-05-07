@@ -4,6 +4,14 @@
   home.stateVersion = "23.11";
 
 
+  programs.bat = {
+    enable = true;
+
+    config = {
+      theme = "1337";
+    };
+  };
+
   programs.zsh = {
     enable = true;
     enableAutosuggestions = true;
