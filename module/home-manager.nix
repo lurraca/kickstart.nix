@@ -25,6 +25,10 @@
     enable = true;
   };
 
+  programs.neovim = {
+    enable = true;
+  };
+
   programs.tmux = {
     enable = true;
     historyLimit = 10000;
