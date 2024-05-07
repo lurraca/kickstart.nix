@@ -13,6 +13,14 @@
       warn-dirty = false;
     };
   };
+
+  services.nix-daemon.enable = true;
+
+  environment = {
+    shells = [pkgs.zsh];
+    loginShell = pkgs.zsh;
+  };
+
   programs.zsh.enable = true;
 
   nixpkgs = {
