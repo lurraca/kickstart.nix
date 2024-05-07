@@ -7,6 +7,10 @@
     EDITOR = "nvim";
   };
 
+  programs.alacritty = {
+    enable = true;
+  };
+
   programs.bat = {
     enable = true;
 
