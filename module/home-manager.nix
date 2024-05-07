@@ -19,6 +19,10 @@
   programs.gh = {
     enable = true;
   };
+
+  programs.jq = {
+    enable = true;
+  };
   programs.zsh = {
     enable = true;
     enableAutosuggestions = true;
