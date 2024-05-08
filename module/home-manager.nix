@@ -9,6 +9,34 @@
 
   programs.alacritty = {
     enable = true;
+
+    settings = {
+      font = {
+        size = 15;
+      };
+
+      live_config_reload = true;
+
+      selection.save_to_clipboard = true;
+
+      shell = {
+        program = "${pkgs.zsh}/bin/zsh";
+      };
+
+      window = {
+        decorations = "buttonless";
+        dimensions = {
+          columns = 133;
+          lines = 40;
+        };
+        opacity = 0.85;
+        padding = {
+          x = 25;
+          y = 20;
+        };
+
+      };
+    };
   };
 
   programs.bat = {
