@@ -5,6 +5,7 @@
 
   home.sessionVariables = {
     EDITOR = "nvim";
+    SHELL = "${pkgs.zsh}/bin/zsh";
   };
 
   programs.alacritty = {
@@ -67,6 +68,7 @@
     enable = true;
     historyLimit = 10000;
     mouse = true;
+    shell = "${pkgs.zsh}/bin/zsh";
 
     extraConfig = ''
       unbind C-b
