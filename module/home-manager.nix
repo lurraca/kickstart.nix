@@ -1,6 +1,27 @@
-{pkgs, ...}: {
+{pkgs, ...}:
+
+let
+  # nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs-unstable
+  # nix-channel --update
+
+  #unstablePkgs = import <nixpkgs-unstable> {};
+in
+  {
+
   # add home-manager user settings here
-  home.packages = with pkgs; [_1password _1password-gui fira-code jrnl];
+  home.packages = with pkgs; [
+    _1password
+    _1password-gui
+    #unstablePkgs.arc-browser
+    discord
+    fira-code
+    jrnl
+    #notion
+    raycast
+    #signal-desktop
+    slack
+    zoom-us
+  ];
   home.stateVersion = "23.11";
 
   home.sessionVariables = {
