@@ -16,12 +16,12 @@
     nixpkgs,
     ...
   }: let
-    darwin-system = import ./system/darwin.nix {inherit inputs username;};
-    username = "lurraca";
+      darwin-system = import ./system/darwin.nix {inherit username inputs;};
+      username = "luis.urraca";
+      system = "aarch64-darwin";
   in {
     darwinConfigurations = {
-      aarch64 = darwin-system "aarch64-darwin";
-      x86_64 = darwin-system "x86_64-darwin";
+      host = darwin-system system;
     };
   };
 }
