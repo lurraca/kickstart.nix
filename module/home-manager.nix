@@ -18,10 +18,13 @@ in {
     jetbrains.goland
     jetbrains.idea-ultimate
     raycast
+    ruby
     rustup
     saml2aws
     slack
     ssm-session-manager-plugin
+    stern
+    tenv
     tig
     unixtools.watch
     wget
@@ -111,13 +114,14 @@ in {
       ".DS_Store"
     ];
 
-    # extraConfig = {
-    #   url = {
-    #     "git@github.com:" = {
-    #       insteadOf = "https://github.com/";
-    #     };
-    #   };
-    # };
+    extraConfig = {
+      #   url = {
+      #     "git@github.com:" = {
+      #       insteadOf = "https://github.com/";
+      #     };
+      #   };
+      push = {autoSetupRemote = true;};
+    };
   };
 
   programs.gh = {
@@ -194,8 +198,10 @@ in {
 
   programs.zsh = {
     enable = true;
-    enableAutosuggestions = true;
+    autosuggestion.enable = true;
     enableCompletion = true;
+
+    initExtra = "source ~/Code/zendesk/kubectl_config/dotfiles/kubectl_stuff.bash";
 
     # plugins:
     # https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins
@@ -224,7 +230,7 @@ in {
       "knife" = "be knife";
       "kz" = "kubectl --as admin --as-group edge-infra-admin --as-group system:authenticated --namespace zorg --context";
       "ll" = "ls -lah";
-      "t" = "tmux -f ~/.config/tmux.conf";
+      "t" = "tmux";
       "v" = "nvim";
       "vi" = "nvim";
       "vim" = "nvim";

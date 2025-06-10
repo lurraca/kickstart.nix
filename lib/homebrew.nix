@@ -6,8 +6,9 @@
   homebrew.enable = true;
 
   homebrew.brews = [
-    "docker-credential-helper-ecr"
     "carvel-dev/carvel/vendir"
+    "docker-credential-helper-ecr"
+    "librdkafka"
     "zendesk/devops/appconfig"
     "zendesk/devops/cicd-cli"
     "zendesk/zendesk/ric"
@@ -17,7 +18,7 @@
   homebrew.casks = [
     "1password"
     "arc"
-    "docker"
+    "github"
     "logi-options-plus"
     "notion"
     "shottr"
