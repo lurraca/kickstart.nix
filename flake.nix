@@ -18,7 +18,7 @@
   }: let
     darwin-system = import ./system/darwin.nix {inherit username inputs;};
     username = "luis.urraca";
-    system = "aarch64-darwin";
+    system = "X7X56XWY9W.local";
   in {
     darwinConfigurations = {
       host = darwin-system system;
