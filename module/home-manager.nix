@@ -13,10 +13,10 @@ in {
     discord
     lua5_1
     lua51Packages.luarocks
-    nerdfonts
-    nil
     jetbrains.goland
     jetbrains.idea-ultimate
+    nodejs_24
+    nil
     raycast
     ruby
     rustup
@@ -37,6 +37,7 @@ in {
     EDITOR = "nvim";
     SHELL = "${pkgs.zsh}/bin/zsh";
   };
+  programs.home-manager.enable = true;
 
   programs.alacritty = {
     enable = true;
@@ -49,11 +50,11 @@ in {
         size = 15;
       };
 
-      live_config_reload = true;
+      general.live_config_reload = true;
 
       selection.save_to_clipboard = true;
 
-      shell = {
+      terminal.shell = {
         program = "${pkgs.zsh}/bin/zsh";
       };
 
@@ -201,7 +202,7 @@ in {
     autosuggestion.enable = true;
     enableCompletion = true;
 
-    initExtra = "source ~/Code/zendesk/kubectl_config/dotfiles/kubectl_stuff.bash";
+    initContent = "source ~/Code/zendesk/kubectl_config/dotfiles/kubectl_stuff.bash";
 
     # plugins:
     # https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins

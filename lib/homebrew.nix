@@ -4,6 +4,7 @@
   ...
 }: {
   homebrew.enable = true;
+  system.primaryUser = "luis.urraca";
 
   homebrew.brews = [
     "carvel-dev/carvel/vendir"
@@ -18,9 +19,12 @@
   homebrew.casks = [
     "1password"
     "arc"
+    "claude"
+    "claude-code"
     "github"
-    "logi-options-plus"
+    # "logi-options-plus"
     "notion"
+    "raycast"
     "shottr"
     "superlist"
   ];
