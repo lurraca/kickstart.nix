@@ -1,5 +1,5 @@
 {
-  description = "nix-darwin system flake";
+  description = "multi-host nix configuration";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -17,6 +17,7 @@
     libHomebrew = import ./lib/homebrew.nix;
   in
   {
+    # macOS (nix-darwin + home-manager as module)
     darwinConfigurations."X7X56XWY9W" = nix-darwin.lib.darwinSystem {
       specialArgs = { inherit self; };
       modules = [
@@ -26,6 +27,18 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.users."${username}" = homeManagerConfig;
+        }
+      ];
+    };
+
+    # Standalone home-manager (WSL2 Ubuntu, Linux)
+    homeConfigurations."${username}" = home-manager.lib.homeManagerConfiguration {
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      modules = [
+        ./home/wsl-pc.nix
+        {
+          home.username = username;
+          home.homeDirectory = "/home/${username}";
         }
       ];
     };
