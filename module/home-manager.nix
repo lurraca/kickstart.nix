@@ -1,24 +1,15 @@
-{pkgs, ...}: let
-  # nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs-unstable
-  # nix-channel --update
-  #unstablePkgs = import <nixpkgs-unstable> {};
-in {
-  # add home-manager user settings here
-  # packages managed directly with nix
+{pkgs, ...}: {
   home.packages = with pkgs; [
     alejandra
-    amazon-ecr-credential-helper
     awscli2
-    delta
     discord
     lua5_1
     lua51Packages.luarocks
     jetbrains.goland
-    jetbrains.idea-ultimate
+    jetbrains.idea
     nodejs_24
     nil
     raycast
-    ruby
     rustup
     saml2aws
     slack
@@ -34,6 +25,7 @@ in {
   home.stateVersion = "23.11";
 
   home.sessionVariables = {
+    CLAUDE_CODE_DISABLE_AUTO_MEMORY = "0";
     EDITOR = "nvim";
     SHELL = "${pkgs.zsh}/bin/zsh";
   };
@@ -98,30 +90,32 @@ in {
   programs.git = {
     enable = true;
 
-    userEmail = "luis.urraca@zendesk.com";
-    userName = "Luis Urraca";
-
-    delta = {
-      enable = true;
-      options = {
-        line-numbers = true;
-        navigate = true;
-        keep-plus-minus-markers = true;
-        side-by-side = true;
-      };
-    };
-
     ignores = [
       ".DS_Store"
     ];
 
-    extraConfig = {
+    settings = {
+      user = {
+        email = "luis.urraca@zendesk.com";
+        name = "Luis Urraca";
+      };
+      push = {autoSetupRemote = true;};
       #   url = {
       #     "git@github.com:" = {
       #       insteadOf = "https://github.com/";
       #     };
       #   };
-      push = {autoSetupRemote = true;};
+    };
+  };
+
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+    options = {
+      line-numbers = true;
+      navigate = true;
+      keep-plus-minus-markers = true;
+      side-by-side = true;
     };
   };
 
@@ -174,6 +168,10 @@ in {
 
       right_format = "$time";
 
+      scala = {
+        disabled = true;
+      };
+
       time = {
         disabled = false;
       };
@@ -182,6 +180,7 @@ in {
 
   programs.tmux = {
     enable = true;
+    tmuxinator.enable = true;
     historyLimit = 10000;
     mouse = true;
     shell = "${pkgs.zsh}/bin/zsh";
@@ -202,7 +201,10 @@ in {
     autosuggestion.enable = true;
     enableCompletion = true;
 
-    initContent = "source ~/Code/zendesk/kubectl_config/dotfiles/kubectl_stuff.bash";
+    initContent = ''
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+      source ~/Code/zendesk/kubectl_config/dotfiles/kubectl_stuff.bash
+    '';
 
     # plugins:
     # https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins
@@ -217,8 +219,8 @@ in {
       "cat" = "bat";
       "be" = "bundle exec";
       "docker-machine" = "__docker_machine_wrapper";
-      "drc" = ''darwin-rebuild check --flake ".#x86_64"'';
-      "drs" = ''darwin-rebuild switch --flake ".#x86_64"'';
+      "drc" = ''darwin-rebuild check --flake "/etc/nix-darwin#X7X56XWY9W"'';
+      "drs" = ''darwin-rebuild switch --flake "/etc/nix-darwin#X7X56XWY9W"'';
       "gbr" = "git branch";
       "gci" = "git commit";
       "gco" = "git checkout";
@@ -231,6 +233,7 @@ in {
       "knife" = "be knife";
       "kz" = "kubectl --as admin --as-group edge-infra-admin --as-group system:authenticated --namespace zorg --context";
       "ll" = "ls -lah";
+      "superclaude" = "claude --dangerously-skip-permissions --model global.anthropic.claude-opus-4-6-v1";
       "t" = "tmux";
       "v" = "nvim";
       "vi" = "nvim";
@@ -250,4 +253,34 @@ in {
       "--hook pwd"
     ];
   };
+
+  xdg.configFile."tmuxinator/work.yml".text = ''
+    name: work
+
+    windows:
+      - edge-state-manager:
+          root: ~/Code/zendesk/edge-state-manager
+          layout: even-horizontal
+          panes:
+            - superclaude
+            -
+      - zendesk-public-ips:
+          root: ~/Code/zendesk/zendesk-public-ips
+          layout: even-horizontal
+          panes:
+            - superclaude
+            -
+      - jaurvis:
+          root: ~/Code/self/jaurvis
+          layout: even-horizontal
+          panes:
+            - superclaude
+            -
+      - scratch:
+          root: ~/Code
+          layout: even-horizontal
+          panes:
+            - superclaude
+            -
+  '';
 }
