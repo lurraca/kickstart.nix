@@ -13,7 +13,7 @@
   let
     username = "luis.urraca";
     systemConfig = import ./module/configuration.nix { inherit username; };
-    homeManagerConfig = import ./module/home-manager.nix;
+    homeManagerConfig = import ./home/work-mac.nix;
     libHomebrew = import ./lib/homebrew.nix;
   in
   {
