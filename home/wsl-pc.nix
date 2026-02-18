@@ -10,12 +10,37 @@
   ];
 
   home.packages = with pkgs; [
-    claude-code
     opencode
+    (pkgs.writeShellScriptBin "ghostty" ''
+      export WAYLAND_DISPLAY=
+      export DISPLAY=:0
+      export LIBGL_ALWAYS_SOFTWARE=1
+      exec ${pkgs.ghostty}/bin/ghostty "$@"
+    '')
   ];
+
+  # Ghostty config for WSL
+  xdg.configFile."ghostty/config".text = ''
+    font-family = "Hack Nerd Font Mono"
+    font-size = 15
+
+    window-decoration = false
+    window-padding-x = 25
+    window-padding-y = 20
+    background-opacity = 0.85
+
+    clipboard-read = allow
+    clipboard-write = allow
+
+    shell-integration = none
+    command = wsl.exe -d Ubuntu --cd ~ -e zsh
+  '';
+
+  # Note: Ghostty doesn't use programs.ghostty module yet, configured manually above
 
   # OpenCode config — API key read from local file outside version control
   xdg.configFile."opencode/config.json".text = builtins.toJSON {
+    model = "moonshotai/kimi-k2.5";
     provider = {
       nvidia = {
         npm = "@ai-sdk/openai-compatible";
@@ -29,6 +54,13 @@
             name = "Kimi K2.5";
           };
         };
+      };
+    };
+    mcp = {
+      playwright = {
+        type = "stdio";
+        command = "npx";
+        args = ["@playwright/mcp@latest"];
       };
     };
   };

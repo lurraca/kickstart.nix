@@ -38,6 +38,7 @@
         {
           home.username = "kasasagi";
           home.homeDirectory = "/home/kasasagi";
+          nixpkgs.config.allowUnfree = true;
         }
       ];
     };
