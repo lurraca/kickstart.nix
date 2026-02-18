@@ -11,8 +11,7 @@
 
   outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs }:
   let
-    username = "luis.urraca";
-    systemConfig = import ./module/configuration.nix { inherit username; };
+    systemConfig = import ./module/configuration.nix { username = "luis.urraca"; };
     homeManagerConfig = import ./home/work-mac.nix;
     libHomebrew = import ./lib/homebrew.nix;
   in
@@ -26,19 +25,19 @@
         inputs.home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          home-manager.users."${username}" = homeManagerConfig;
+          home-manager.users."luis.urraca" = homeManagerConfig;
         }
       ];
     };
 
-    # Standalone home-manager (WSL2 Ubuntu, Linux)
-    homeConfigurations."${username}" = home-manager.lib.homeManagerConfiguration {
+    # Standalone home-manager (WSL2 Ubuntu)
+    homeConfigurations."kasasagi" = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       modules = [
         ./home/wsl-pc.nix
         {
-          home.username = username;
-          home.homeDirectory = "/home/${username}";
+          home.username = "kasasagi";
+          home.homeDirectory = "/home/kasasagi";
         }
       ];
     };
