@@ -3,7 +3,8 @@
 > **Date**: 2026-02-17
 > **Author**: Luis Urraca + Claude
 > **Repo**: [lurraca/kickstart.nix](https://github.com/lurraca/kickstart.nix)
-> **Status**: Planning — work will be done incrementally
+> **Last Updated**: 2026-02-18
+> **Status**: In Progress — Phase 1 complete, Phase 3 prep complete
 
 ---
 
@@ -34,24 +35,37 @@
 | Personal Mac | TBD | `x86_64-darwin` | Personal use (Intel — see [section 5](#5-x86_64-darwin-deprecation)) | **Later** |
 | VPS | TBD | `x86_64-linux` | Server | **Later** |
 
-### Current Directory Structure
+### Current Directory Structure (as of 2026-02-18)
 
 ```
 /etc/nix-darwin/
-├── flake.nix                  # Flake entry point (wiring only)
-├── flake.lock                 # Pinned inputs (updated 2026-02-16)
-├── darwin.nix                 # Legacy/unused (pre-flake import)
+├── flake.nix                      # Host registry (darwinConfigurations + homeConfigurations)
+├── flake.lock                     # Pinned inputs (updated 2026-02-16)
+├── darwin.nix                     # Legacy/unused (pre-flake import) — DELETE
 ├── module/
-│   ├── configuration.nix      # System-level config (single host)
-│   └── home-manager.nix       # All user config in one 287-line file
+│   └── configuration.nix          # System-level config (single host)
 ├── lib/
-│   └── homebrew.nix           # Declarative Homebrew (brews, casks, taps)
-├── examples/                  # Untracked reference files
+│   └── homebrew.nix               # Declarative Homebrew (brews, casks, taps)
+├── home/
+│   ├── shared/                    # Cross-platform modules
+│   │   ├── cli.nix                # bat, ripgrep, jq, eza, bottom, wget, etc.
+│   │   ├── git.nix                # git + delta + gh (mkDefault on identity)
+│   │   ├── shell.nix              # zsh, starship, zoxide, hstr, oh-my-zsh
+│   │   ├── editor.nix             # neovim
+│   │   └── tmux.nix               # tmux + tmuxinator
+│   ├── darwin/                    # macOS-only modules
+│   │   └── packages.nix           # GUI apps (raycast, slack, etc.) + alacritty
+│   ├── linux/                     # Linux-only modules
+│   │   └── packages.nix           # gcc, gnumake, unzip, curl
+│   ├── work.nix                   # Work-specific: kubectl aliases, saml2aws, etc.
+│   ├── personal.nix               # Personal: git email override
+│   ├── work-mac.nix               # Entry point: shared + darwin + work
+│   └── wsl-pc.nix                 # Entry point: shared + linux + personal
 ├── docs/
 │   ├── ALIASES.md
 │   ├── TROUBLESHOOTING.md
-│   └── MULTI-HOST-PLAN.md     # This file
-├── restructure.sh             # Legacy restructuring script
+│   └── MULTI-HOST-PLAN.md         # This file
+├── restructure.sh                 # Legacy restructuring script — DELETE
 ├── Makefile
 ├── CLAUDE.md
 ├── CONTRIBUTING.md
@@ -66,15 +80,15 @@
 | nix-darwin | `github:nix-darwin/nix-darwin/master` | 2026-02-12 |
 | home-manager | `github:nix-community/home-manager` | 2026-02-16 |
 
-### Current Limitations
+### Remaining Limitations
 
-- **Single host only**: `darwinConfigurations."X7X56XWY9W"` — adding a second machine means duplicating or adding conditionals.
-- **Monolithic home-manager**: All 287 lines in one file (shell, git, editor, terminal, tmux, starship, aliases, packages).
+- ~~**Single host only**~~: ✅ Flake now has `darwinConfigurations` + `homeConfigurations` outputs.
+- ~~**Monolithic home-manager**~~: ✅ Split into 8 composable modules under `home/`.
 - **No secrets management**: No encrypted secrets in the repo.
 - **No remote deployment**: No tooling for managing the VPS.
-- **Darwin-specific only**: No NixOS support in the flake.
+- **No `mkSystem` factory**: Hosts are wired manually in flake.nix (fine for now).
 - **Hardcoded paths**: `brew shellenv` path, kubectl config path, flake hostname in aliases.
-- **Legacy files**: `darwin.nix`, `restructure.sh`, `examples/` are dead weight.
+- **Legacy files**: `darwin.nix`, `restructure.sh` still present.
 
 ---
 
@@ -447,8 +461,8 @@ Install the Nix daemon on top of the default Ubuntu WSL2 distro, then use `home-
 
 - **Manages**: user packages, dotfiles, shell config, git, neovim, tmux, starship
 - **Does NOT manage**: system packages, services, the Ubuntu base (those stay under `apt`)
-- **Flake output**: `homeConfigurations."luis@wsl"`
-- **Apply command**: `home-manager switch --flake <path>#luis@wsl`
+- **Flake output**: `homeConfigurations."luis.urraca"`
+- **Apply command**: `home-manager switch --flake <path>#luis.urraca`
 - **Pattern used by**: [malob/nix-config](https://github.com/malob/nix-config) (450 stars) — `darwinConfigurations` for macOS + `homeConfigurations` for Linux
 
 **Installation steps** (based on [Using Nix on Windows the Right Way](https://dev.to/jajera/using-nix-on-windows-the-right-way-14ki)):
@@ -465,7 +479,7 @@ Install the Nix daemon on top of the default Ubuntu WSL2 distro, then use `home-
    ```
 4. Clone the flake repo and run:
    ```bash
-   nix run home-manager -- switch --flake .#luis@wsl
+   nix run home-manager -- switch --flake .#luis.urraca
    ```
 
 **Gotchas**:
@@ -547,9 +561,9 @@ nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
 
 ```nix
 # In flake.nix
-homeConfigurations."luis@wsl" = home-manager.lib.homeManagerConfiguration {
+homeConfigurations."luis.urraca" = home-manager.lib.homeManagerConfiguration {
   pkgs = nixpkgs.legacyPackages.x86_64-linux;
-  modules = [ ./home/wsl.nix ];
+  modules = [ ./home/wsl-pc.nix ];
 };
 ```
 
@@ -727,7 +741,7 @@ Prerequisites: Phase 1 complete (shared modules exist).
 10. Apply the configuration:
     ```bash
     cd ~/nix-config
-    nix run home-manager -- switch --flake .#luis@wsl
+    nix run home-manager -- switch --flake .#luis.urraca
     ```
 
 **Test**: Verify shell, git, neovim, tmux, starship all work correctly inside WSL2.
@@ -810,27 +824,59 @@ These changes were made on 2026-02-17 and committed as `43836d3`:
 - Removed `node` from Homebrew (duplicate with nixpkgs `nodejs_24`)
 - Changed `openjdk` → `openjdk@21` (Java 18 was EOL)
 
+### Phase 1 Complete (2026-02-18, commit `ca97bda`)
+
+Split monolithic `module/home-manager.nix` (287 lines) into 8 composable modules:
+
+- `home/shared/cli.nix` — cross-platform CLI tools and programs
+- `home/shared/git.nix` — git, delta, gh (mkDefault on user identity for easy override)
+- `home/shared/shell.nix` — zsh, oh-my-zsh, starship, general aliases
+- `home/shared/editor.nix` — neovim
+- `home/shared/tmux.nix` — tmux + tmuxinator
+- `home/darwin/packages.nix` — macOS GUI apps + alacritty
+- `home/work.nix` — work-specific packages, aliases, kubectl, tmuxinator layout, superclaude
+- `home/work-mac.nix` — entry point composing all modules for work Mac
+
+Deleted `module/home-manager.nix`. Updated `flake.nix` to import `./home/work-mac.nix`.
+Verified with `drs` — no regressions.
+
+### Phase 3 Prep Complete (2026-02-18, commit `569a15d`)
+
+Created flake-side files for WSL2 Ubuntu standalone home-manager:
+
+- `home/linux/packages.nix` — Linux-specific packages (gcc, gnumake, unzip, curl)
+- `home/personal.nix` — overrides git email to personal (mkForce over mkDefault)
+- `home/wsl-pc.nix` — entry point importing shared + linux + personal
+- Added `homeConfigurations."luis.urraca"` output to `flake.nix` for `x86_64-linux`
+
+Verified with `nix flake check` — passes.
+
+### Removed (2026-02-18)
+
+- `examples/` directory deleted (dead reference files from Aug 2025)
+
 ---
 
 ## 9. Work Remaining
 
 ### Now (Can Do Immediately)
 
-- [ ] **Phase 1**: Split `home-manager.nix` into composable modules
+- [x] ~~**Phase 1**: Split `home-manager.nix` into composable modules~~ ✅ `ca97bda`
 - [ ] **Phase 2**: Create `mkSystem` factory and `hosts/` directory
 - [ ] Delete `darwin.nix` (unused legacy file)
 - [ ] Delete `restructure.sh` (old script)
-- [ ] Decide what to do with `examples/` directory
+- [x] ~~Decide what to do with `examples/` directory~~ ✅ deleted
 - [ ] Run `nix-collect-garbage -d && sudo nix-collect-garbage -d` to reclaim disk space
 
-### Next (WSL2 Setup)
+### Next (WSL2 Setup — On the PC)
 
-- [ ] **Phase 3**: Set up WSL2 Ubuntu on personal PC
+- [x] ~~**Phase 3 prep**: Create `home/wsl-pc.nix`, `home/personal.nix`, `home/linux/packages.nix`~~ ✅ `569a15d`
+- [x] ~~**Phase 3 prep**: Add `homeConfigurations` to `flake.nix`~~ ✅ `569a15d`
+- [ ] **Phase 3**: Install WSL2 Ubuntu on personal PC
 - [ ] **Phase 3**: Install Nix daemon on WSL2
-- [ ] **Phase 3**: Create `home/wsl.nix`, `home/personal.nix`, `home/linux/packages.nix`
-- [ ] **Phase 3**: Add `homeConfigurations."luis@wsl"` to `flake.nix`
-- [ ] **Phase 3**: Add platform conditionals to shared modules (guard brew shellenv, darwin-only aliases)
-- [ ] **Phase 3**: Apply and test on WSL2
+- [ ] **Phase 3**: Clone repo and run `home-manager switch --flake .#luis.urraca`
+- [ ] **Phase 3**: Add platform conditionals to shared modules if needed (guard brew shellenv, darwin-only aliases)
+- [ ] **Phase 3**: Test and iterate on WSL2
 
 ### Later
 
