@@ -7,9 +7,11 @@
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    nixgl.url = "github:nix-community/nixGL";
+    nixgl.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs }:
+  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl }:
   let
     systemConfig = import ./module/configuration.nix { username = "luis.urraca"; };
     homeManagerConfig = import ./home/work-mac.nix;
@@ -33,6 +35,7 @@
     # Standalone home-manager (WSL2 Ubuntu)
     homeConfigurations."kasasagi" = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      extraSpecialArgs = { inherit nixgl; };
       modules = [
         ./home/wsl-pc.nix
         {

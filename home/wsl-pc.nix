@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{pkgs, nixgl, ...}: {
   imports = [
     ./shared/cli.nix
     ./shared/git.nix
@@ -11,32 +11,75 @@
 
   home.packages = with pkgs; [
     opencode
-    (pkgs.writeShellScriptBin "ghostty" ''
-      export WAYLAND_DISPLAY=
-      export DISPLAY=:0
-      export LIBGL_ALWAYS_SOFTWARE=1
-      exec ${pkgs.ghostty}/bin/ghostty "$@"
-    '')
+    alacritty
+    nixgl.packages.${pkgs.system}.nixGLIntel
   ];
 
-  # Ghostty config for WSL
-  xdg.configFile."ghostty/config".text = ''
-    font-family = "Hack Nerd Font Mono"
-    font-size = 15
+  # Wrapper script for Alacritty with nixGL
+  home.file.".local/bin/alacritty-wrapped" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      export WAYLAND_DISPLAY=
+      export DISPLAY=:0
+      exec ${nixgl.packages.${pkgs.system}.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty "$@"
+    '';
+  };
 
-    window-decoration = false
-    window-padding-x = 25
-    window-padding-y = 20
-    background-opacity = 0.85
+  # Paste helper script using Windows PowerShell
+  home.file.".local/bin/wsl-paste" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -command 'Get-Clipboard' | tr -d '\r'
+    '';
+  };
 
-    clipboard-read = allow
-    clipboard-write = allow
+  # Alacritty config for WSL (manual config since we wrap the binary)
+  xdg.configFile."alacritty/alacritty.toml".text = ''
+    [font]
+    size = 12
 
-    shell-integration = none
-    command = wsl.exe -d Ubuntu --cd ~ -e zsh
+    [font.normal]
+    family = "DejaVu Sans Mono"
+
+    [font.offset]
+    y = 1
+
+    [general]
+    live_config_reload = true
+
+    [selection]
+    save_to_clipboard = true
+
+    [terminal]
+    osc52 = "CopyPaste"
+
+    [terminal.shell]
+    program = "${pkgs.zsh}/bin/zsh"
+
+    [window]
+    decorations = "buttonless"
+    opacity = 0.85
+
+    [window.dimensions]
+    columns = 120
+    lines = 40
+
+    [window.padding]
+    x = 25
+    y = 20
+
+    [[keyboard.bindings]]
+    key = "V"
+    mods = "Control|Shift"
+    action = "Paste"
+
+    [[keyboard.bindings]]
+    key = "C"
+    mods = "Control|Shift"
+    action = "Copy"
   '';
-
-  # Note: Ghostty doesn't use programs.ghostty module yet, configured manually above
 
   # OpenCode config — API key read from local file outside version control
   xdg.configFile."opencode/config.json".text = builtins.toJSON {

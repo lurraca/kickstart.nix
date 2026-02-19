@@ -14,9 +14,14 @@
       # Vi copy mode
       setw -g mode-keys vi
 
-      # WSL clipboard integration
-      bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "/mnt/c/Windows/System32/clip.exe"
-      bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "/mnt/c/Windows/System32/clip.exe"
+    # OSC 52 clipboard integration (works with Alacritty)
+    # Let tmux use OSC 52 escape sequences instead of piping to clip.exe
+    # This avoids crashes when Alacritty handles the clipboard internally
+    set -g set-clipboard on
+    
+    # Use 'y' to copy selection (tmux will use OSC 52)
+    bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
+    bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-selection-and-cancel
 
       bind '"' split-window -h -c '#{pane_current_path}'
       bind % split-window -v -c '#{pane_current_path}'

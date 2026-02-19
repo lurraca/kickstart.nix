@@ -57,23 +57,34 @@
       theme = "robbyrussell";
     };
 
-    shellAliases = {
-      "cat" = "bat";
-      "gbr" = "git branch";
-      "gci" = "git commit";
-      "gco" = "git checkout";
-      "gpf" = "git push --force-with-lease";
-      "gst" = "git status";
-      "gti" = "git";
-      "ll" = "ls -lah";
-      "t" = "tmux";
-      "v" = "nvim";
-      "vi" = "nvim";
-      "vim" = "nvim";
-    };
+  shellAliases = {
+    "cat" = "bat";
+    "gbr" = "git branch";
+    "gci" = "git commit";
+    "gco" = "git checkout";
+    "gpf" = "git push --force-with-lease";
+    "gst" = "git status";
+    "gti" = "git";
+    "ll" = "ls -lah";
+    "t" = "tmux";
+    "v" = "nvim";
+    "vi" = "nvim";
+    "vim" = "nvim";
+    # WSL clipboard integration
+    "clip" = "/mnt/c/Windows/System32/clip.exe";
+    "pbcopy" = "clip.exe";
+    "pbpaste" = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -command 'Get-Clipboard' | tr -d '\r'";
+  };
 
     syntaxHighlighting = {
       enable = true;
     };
+
+    initExtra = ''
+      # Bandwhich wrapper - preserves PATH for sudo
+      bw() {
+        sudo -E env "PATH=$PATH" bandwhich "$@"
+      }
+    '';
   };
 }

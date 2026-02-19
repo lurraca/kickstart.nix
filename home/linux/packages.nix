@@ -1,9 +1,12 @@
 {pkgs, ...}: {
   home.packages = with pkgs; [
+    bandwhich
     gcc
     gnumake
     unzip
     curl
+    glow
+    wslu
     
     # Playwright browser automation dependencies
     nss

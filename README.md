@@ -98,6 +98,30 @@ nix-collect-garbage -d
 nix search nixpkgs <package-name>
 ```
 
+## Cheatsheet
+
+### Running Alacritty
+
+**From WSL Terminal (Current Method):**
+```bash
+~/.local/bin/alacritty-wrapped &
+```
+
+**From Windows (VBScript - No CMD window):**
+1. Double-click: `%USERPROFILE%\alacritty.vbs`
+2. Or Win+R: `wscript %USERPROFILE%\alacritty.vbs`
+
+**From Windows (Batch - With CMD window):**
+```
+Win+R -> %USERPROFILE%\alacritty.bat
+```
+
+**Create Start Menu Shortcut:**
+1. Right-click Desktop → New → Shortcut
+2. Location: `wscript %USERPROFILE%\alacritty.vbs`
+3. Name: "Alacritty"
+4. Move to: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\`
+
 ### Shell Aliases
 
 The configuration includes many useful aliases:
