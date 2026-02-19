@@ -78,3 +78,26 @@ When making changes:
 For package updates:
 1. Update flake inputs with `nix flake update`
 2. Rebuild and switch to apply updates
+
+## Guidelines
+
+### GitHub Operations
+
+When performing any GitHub-related operations (searching code, viewing repositories, checking issues/PRs, etc.), always use the `gh` CLI unless explicitly stated otherwise. Examples:
+
+```bash
+# Search for code
+gh search code "<query>" --limit <n> --json repository,path,url
+
+# Search for repos
+gh search repos "<query>" --limit <n>
+
+# View repository contents
+gh api repos/<owner>/<repo>/contents/<path>
+
+# View issues/PRs
+gh issue view <number> --repo <owner>/<repo>
+gh pr view <number> --repo <owner>/<repo>
+```
+
+Avoid using web search tools for GitHub-specific queries when `gh` CLI is available.
