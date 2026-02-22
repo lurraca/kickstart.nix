@@ -58,6 +58,7 @@
     };
 
   shellAliases = {
+    "superclaude" = "claude --dangerously-skip-permissions";
     "cat" = "bat";
     "gbr" = "git branch";
     "gci" = "git commit";

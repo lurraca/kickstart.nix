@@ -1,4 +1,4 @@
-{pkgs, nixgl, claude-code, opencode, ...}: {
+{pkgs, lib, nixgl, claude-code, opencode, ...}: {
   imports = [
     ./shared/cli.nix
     ./shared/git.nix
@@ -82,31 +82,44 @@
     action = "Copy"
   '';
 
-  # OpenCode config — API key read from local file outside version control
-  xdg.configFile."opencode/config.json".text = builtins.toJSON {
-    model = "moonshotai/kimi-k2.5";
-    provider = {
-      nvidia = {
-        npm = "@ai-sdk/openai-compatible";
-        name = "NVIDIA NIM";
-        options = {
-          baseURL = "https://integrate.api.nvidia.com/v1";
-          apiKey = "{file:~/.secrets/nvidia-api-key}";
-        };
-        models = {
-          "moonshotai/kimi-k2.5" = {
-            name = "Kimi K2.5";
+  # OpenCode config — copied (not symlinked) so opencode can write to it at runtime
+  home.activation.opencode-config = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    config_dir="$HOME/.config/opencode"
+    config_file="$config_dir/config.json"
+    mkdir -p "$config_dir"
+    if [ ! -e "$config_file" ] || [ -L "$config_file" ]; then
+      rm -f "$config_file"
+      cp ${pkgs.writeText "opencode-config.json" (builtins.toJSON {
+        model = "moonshotai/kimi-k2.5";
+        provider = {
+          nvidia = {
+            npm = "@ai-sdk/openai-compatible";
+            name = "NVIDIA NIM";
+            options = {
+              baseURL = "https://integrate.api.nvidia.com/v1";
+              apiKey = "{file:~/.secrets/nvidia-api-key}";
+            };
+            models = {
+              "moonshotai/kimi-k2.5" = {
+                name = "Kimi K2.5";
+              };
+            };
           };
         };
-      };
-    };
-    mcp = {
-      playwright = {
-        type = "stdio";
-        command = "npx";
-        args = ["@playwright/mcp@latest"];
-      };
-    };
+        mcp = {
+          playwright = {
+            type = "local";
+            command = ["npx" "@playwright/mcp@latest"];
+            enabled = true;
+          };
+        };
+      })} "$config_file"
+      chmod 644 "$config_file"
+    fi
+  '';
+
+  programs.zsh.shellAliases = {
+    "hms" = "home-manager switch --flake ~/nix-config#$USER";
   };
 
   # Source local secrets into shell (for tools that need env vars)
