@@ -81,7 +81,7 @@
       enable = true;
     };
 
-    initExtra = ''
+    initContent = ''
       # Bandwhich wrapper - preserves PATH for sudo
       bw() {
         sudo -E env "PATH=$PATH" bandwhich "$@"

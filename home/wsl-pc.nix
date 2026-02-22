@@ -11,9 +11,9 @@
 
   home.packages = with pkgs; [
     alacritty
-    nixgl.packages.${pkgs.system}.nixGLIntel
-    claude-code.packages.${pkgs.system}.claude-code
-    opencode.packages.${pkgs.system}.opencode
+    nixgl.packages.${pkgs.stdenv.hostPlatform.system}.nixGLIntel
+    claude-code.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
+    opencode.packages.${pkgs.stdenv.hostPlatform.system}.opencode
   ];
 
   # Wrapper script for Alacritty with nixGL
@@ -23,7 +23,7 @@
       #!/usr/bin/env bash
       export WAYLAND_DISPLAY=
       export DISPLAY=:0
-      exec ${nixgl.packages.${pkgs.system}.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty "$@"
+      exec ${nixgl.packages.${pkgs.stdenv.hostPlatform.system}.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty "$@"
     '';
   };
 
