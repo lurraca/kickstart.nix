@@ -1,4 +1,4 @@
-{pkgs, nixgl, ...}: {
+{pkgs, nixgl, claude-code, opencode, ...}: {
   imports = [
     ./shared/cli.nix
     ./shared/git.nix
@@ -10,9 +10,10 @@
   ];
 
   home.packages = with pkgs; [
-    opencode
     alacritty
     nixgl.packages.${pkgs.system}.nixGLIntel
+    claude-code.packages.${pkgs.system}.claude-code
+    opencode.packages.${pkgs.system}.opencode
   ];
 
   # Wrapper script for Alacritty with nixGL

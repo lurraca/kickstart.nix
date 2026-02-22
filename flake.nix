@@ -9,9 +9,13 @@
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
     nixgl.url = "github:nix-community/nixGL";
     nixgl.inputs.nixpkgs.follows = "nixpkgs";
+    claude-code.url = "github:sadjow/claude-code-nix";
+    claude-code.inputs.nixpkgs.follows = "nixpkgs";
+    opencode.url = "github:AodhanHayter/opencode-flake";
+    opencode.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl }:
+  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl, claude-code, opencode }:
   let
     systemConfig = import ./module/configuration.nix { username = "luis.urraca"; };
     homeManagerConfig = import ./home/work-mac.nix;
@@ -35,13 +39,14 @@
     # Standalone home-manager (WSL2 Ubuntu)
     homeConfigurations."kasasagi" = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
-      extraSpecialArgs = { inherit nixgl; };
+      extraSpecialArgs = { inherit nixgl claude-code opencode; };
       modules = [
         ./home/wsl-pc.nix
         {
           home.username = "kasasagi";
           home.homeDirectory = "/home/kasasagi";
           nixpkgs.config.allowUnfree = true;
+          nixpkgs.config.allowUnfreePredicate = _: true;
         }
       ];
     };
