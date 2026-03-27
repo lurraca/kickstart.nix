@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "mcp__github__get_file_contents"
+      "mcp__github__get_file_contents",
+      "Bash(gh search:*)",
+      "Bash(head:*)",
+      "Bash(gh api:*)",
+      "Bash(nix flake:*)",
+      "Bash(python3:*)",
+      "Bash(gh release:*)"
     ],
     "deny": [],
     "ask": []

@@ -11,6 +11,9 @@
 
   home.packages = with pkgs; [
     alacritty
+    nerd-fonts.jetbrains-mono
+    noto-fonts-cjk-sans
+    piper-tts
     nixgl.packages.${pkgs.stdenv.hostPlatform.system}.nixGLIntel
     claude-code.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
     opencode.packages.${pkgs.stdenv.hostPlatform.system}.opencode
@@ -42,7 +45,7 @@
     size = 12
 
     [font.normal]
-    family = "DejaVu Sans Mono"
+    family = "JetBrainsMono Nerd Font"
 
     [font.offset]
     y = 1
@@ -58,6 +61,7 @@
 
     [terminal.shell]
     program = "${pkgs.zsh}/bin/zsh"
+    args = ["-l"]
 
     [window]
     decorations = "buttonless"
@@ -80,6 +84,11 @@
     key = "C"
     mods = "Control|Shift"
     action = "Copy"
+  '';
+
+  # Install/upgrade notebooklm-mcp-cli via uv on every home-manager switch
+  home.activation.install-notebooklm-cli = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    ${pkgs.uv}/bin/uv tool install --upgrade notebooklm-mcp-cli
   '';
 
   # OpenCode config — copied (not symlinked) so opencode can write to it at runtime
@@ -118,8 +127,35 @@
     fi
   '';
 
+  # Enable home-manager fontconfig so Nix-installed fonts are discoverable
+  fonts.fontconfig.enable = true;
+
+  # Fontconfig: fallback to Noto Sans CJK JP for Japanese glyphs
+  xdg.configFile."fontconfig/conf.d/99-cjk-fallback.conf".text = ''
+    <?xml version="1.0"?>
+    <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+    <fontconfig>
+      <alias>
+        <family>JetBrainsMono Nerd Font</family>
+        <prefer>
+          <family>JetBrainsMono Nerd Font</family>
+          <family>Noto Sans CJK JP</family>
+        </prefer>
+      </alias>
+      <alias>
+        <family>monospace</family>
+        <prefer>
+          <family>JetBrainsMono Nerd Font</family>
+          <family>Noto Sans CJK JP</family>
+        </prefer>
+      </alias>
+    </fontconfig>
+  '';
+
+  home.sessionPath = [ "$HOME/.local/bin" ];
+
   programs.zsh.shellAliases = {
-    "hms" = "home-manager switch --flake ~/nix-config#$USER";
+    "hms" = "nix flake update claude-code --flake ~/nix-config && home-manager switch --flake ~/nix-config#$USER";
   };
 
   # Source local secrets into shell (for tools that need env vars)

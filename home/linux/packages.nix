@@ -2,6 +2,7 @@
   home.packages = with pkgs; [
     bandwhich
     gcc
+    uv
     gnumake
     unzip
     curl
