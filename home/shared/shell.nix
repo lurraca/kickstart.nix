@@ -5,6 +5,9 @@
     SHELL = "${pkgs.zsh}/bin/zsh";
   };
 
+  # Local bin for uvx, uv, and other user-installed tools (was in ~/.zprofile).
+  home.sessionPath = ["$HOME/.local/bin"];
+
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
@@ -47,6 +50,11 @@
     enable = true;
     autosuggestion.enable = true;
     enableCompletion = true;
+
+    # Sourced from ~/.zprofile (login shells). Was a hand-edited ~/.zprofile.
+    profileExtra = ''
+      source ~/.netskope-env
+    '';
 
     # plugins:
     # https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins

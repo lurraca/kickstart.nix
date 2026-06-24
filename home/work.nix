@@ -9,6 +9,7 @@
   programs.zsh = {
     initContent = ''
       eval "$(/opt/homebrew/bin/brew shellenv)"
+      eval "$(rbenv init - zsh)"
       source ~/Code/zendesk/kubectl_config/dotfiles/kubectl_stuff.bash
     '';
 
@@ -22,7 +23,7 @@
       "kc" = "kubectl --context";
       "knife" = "be knife";
       "kz" = "kubectl --as admin --as-group edge-infra-admin --as-group system:authenticated --namespace zorg --context";
-      "superclaude" = "claude --dangerously-skip-permissions --model global.anthropic.claude-opus-4-6-v1";
+      "superclaude" = ''claude --dangerously-skip-permissions --model "global.anthropic.claude-opus-4-8[1m]"'';
     };
   };
 
@@ -30,26 +31,26 @@
     name: work
 
     windows:
+      - work-brain:
+          root: ~/Code/zendesk/work-brain
+          layout: even-horizontal
+          panes:
+            - superclaude
+            -
       - edge-state-manager:
           root: ~/Code/zendesk/edge-state-manager
           layout: even-horizontal
           panes:
             - superclaude
             -
-      - zendesk-public-ips:
-          root: ~/Code/zendesk/zendesk-public-ips
-          layout: even-horizontal
-          panes:
-            - superclaude
-            -
-      - jaurvis:
-          root: ~/Code/self/jaurvis
-          layout: even-horizontal
-          panes:
-            - superclaude
-            -
       - scratch:
           root: ~/Code
+          layout: even-horizontal
+          panes:
+            - superclaude
+            -
+      - ticket-duty:
+          root: ~/Code/zendesk/ticket-duty-rotations
           layout: even-horizontal
           panes:
             - superclaude
