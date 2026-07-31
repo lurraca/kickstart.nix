@@ -2,7 +2,7 @@
   home.packages = with pkgs; [
     discord
     jetbrains.goland
-    jetbrains.idea
+    jetbrains-toolbox
     raycast
     slack
     zoom-us

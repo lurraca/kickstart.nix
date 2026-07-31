@@ -34,6 +34,7 @@
     "github"
     "logi-options-plus"
     "notion"
+    "obs"
     "obsidian"
     "raycast"
     "shottr"

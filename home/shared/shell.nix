@@ -51,6 +51,24 @@
     autosuggestion.enable = true;
     enableCompletion = true;
 
+    # Cache compinit: the default is an uncached `compinit` that re-audits and
+    # recompiles ~1200 nix completion functions on every shell start (~2.4s).
+    # `-C` skips the audit and reuses the dumpfile; we rebuild the dump only
+    # when it is missing or older than 20h, so completions still refresh but a
+    # normal shell start pays ~0.05s instead of ~2.4s. Paired with
+    # programs.zsh.enableGlobalCompInit = false in module/configuration.nix so
+    # this is the only compinit that runs.
+    completionInit = ''
+      autoload -U compinit
+      _zdump="''${ZDOTDIR:-$HOME}/.zcompdump"
+      if [[ -n "$_zdump"(#qN.mh-20) ]]; then
+        compinit -C -d "$_zdump"
+      else
+        compinit -d "$_zdump"
+      fi
+      unset _zdump
+    '';
+
     # Sourced from ~/.zprofile (login shells). Was a hand-edited ~/.zprofile.
     profileExtra = ''
       source ~/.netskope-env

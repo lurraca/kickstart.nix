@@ -36,6 +36,10 @@
   ];
 
   programs.zsh.enable = true;
+  # Skip nix-darwin's uncached compinit in /etc/zshrc: it audits ~1200 nix
+  # completion functions on every shell start (~2.7s). home-manager runs a
+  # single cached compinit instead (see home/shared/shell.nix completionInit).
+  programs.zsh.enableGlobalCompInit = false;
 
   users.users."luis.urraca" = {
     home = "/Users/luis.urraca";
