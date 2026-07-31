@@ -1,10 +1,12 @@
-{pkgs, ...}: {
+{pkgs, inputs, ...}: {
   home.packages = with pkgs; [
     alejandra
+    inputs.treehouse.packages.${pkgs.system}.default
     lua5_1
     lua51Packages.luarocks
     nodejs_24
     nil
+    pi-coding-agent
     rustup
     tenv
     tig

@@ -13,13 +13,16 @@
     claude-code.inputs.nixpkgs.follows = "nixpkgs";
     opencode.url = "github:AodhanHayter/opencode-flake";
     opencode.inputs.nixpkgs.follows = "nixpkgs";
+    treehouse.url = "github:kunchenguid/treehouse";
+    treehouse.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl, claude-code, opencode }:
+  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl, claude-code, opencode, treehouse }:
   let
     systemConfig = import ./module/configuration.nix { username = "luis.urraca"; };
     homeManagerConfig = import ./home/work-mac.nix;
     libHomebrew = import ./lib/homebrew.nix;
+    piOverlay = import ./lib/pi-coding-agent-overlay.nix;
   in
   {
     # macOS (nix-darwin + home-manager as module)
@@ -28,9 +31,11 @@
       modules = [
         systemConfig
         libHomebrew
+        { nixpkgs.overlays = [ piOverlay ]; }
         inputs.home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
+          home-manager.extraSpecialArgs = { inherit inputs; };
           home-manager.users."luis.urraca" = homeManagerConfig;
         }
       ];
@@ -38,8 +43,8 @@
 
     # Standalone home-manager (WSL2 Ubuntu)
     homeConfigurations."kasasagi" = home-manager.lib.homeManagerConfiguration {
-      pkgs = nixpkgs.legacyPackages.x86_64-linux;
-      extraSpecialArgs = { inherit nixgl claude-code opencode; };
+      pkgs = nixpkgs.legacyPackages.x86_64-linux.extend piOverlay;
+      extraSpecialArgs = { inherit inputs nixgl claude-code opencode; };
       modules = [
         ./home/wsl-pc.nix
         {
