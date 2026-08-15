@@ -30,6 +30,20 @@
     '';
   };
 
+  # Wrapper script for Obsidian with nixGL (Electron under WSLg)
+  # --no-sandbox: Electron's sandbox does not work under WSL.
+  # --ozone-platform=x11: WSLg exposes X11 here (WAYLAND_DISPLAY is empty).
+  home.file.".local/bin/obsidian-wrapped" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      export WAYLAND_DISPLAY=
+      export DISPLAY=:0
+      exec ${nixgl.packages.${pkgs.stdenv.hostPlatform.system}.nixGLIntel}/bin/nixGLIntel \
+        ${pkgs.obsidian}/bin/obsidian --no-sandbox --ozone-platform=x11 "$@"
+    '';
+  };
+
   # Paste helper script using Windows PowerShell
   home.file.".local/bin/wsl-paste" = {
     executable = true;

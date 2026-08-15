@@ -7,8 +7,11 @@
     unzip
     curl
     glow
-    wslu
-    
+    # wslu removed 2026-08-15 — dropped from nixpkgs; upstream project is
+    # discontinued and the repo archived. Nothing in this config or the shell
+    # referenced it. If `wslview` is ever needed again, call
+    # /mnt/c/Windows/explorer.exe directly, or use the wsl-open package.
+
     # Playwright browser automation dependencies
     nss
     nspr

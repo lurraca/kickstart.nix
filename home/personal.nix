@@ -1,8 +1,22 @@
-{lib, ...}: {
+{lib, pkgs, ...}: {
   programs.git.settings.user = {
     email = lib.mkForce "me@lurraca.com";
     name = lib.mkForce "Luis Urraca";
   };
+
+  home.packages = with pkgs; [
+    # Markdown vault reader — used to browse the robotina workspace
+    # (graph view, backlinks, Dataview over frontmatter).
+    #
+    # Deliberately here and NOT in home/shared/: shared is imported by the
+    # work MacBook too, and the robotina vault holds health records and
+    # personal financial analysis, so it never goes on work hardware.
+    # Keeping the reader off that machine as well removes the temptation.
+    #
+    # On WSL this needs the nixGL + --no-sandbox wrapper defined in
+    # wsl-pc.nix (Electron under WSLg), same pattern as alacritty.
+    obsidian
+  ];
 
   xdg.configFile."tmuxinator/home.yml".text = ''
     name: home
