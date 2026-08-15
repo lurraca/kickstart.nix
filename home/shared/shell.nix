@@ -94,6 +94,9 @@
     "gti" = "git";
     "ll" = "ls -lah";
     "t" = "tmux";
+    # Attach to the 'home' session (detaching other clients so the window
+    # sizes to the current screen); create it if it doesn't exist.
+    "ta" = "tmux new-session -A -D -s home";
     "v" = "nvim";
     "vi" = "nvim";
     "vim" = "nvim";
@@ -111,6 +114,12 @@
       # Bandwhich wrapper - preserves PATH for sudo
       bw() {
         sudo -E env "PATH=$PATH" bandwhich "$@"
+      }
+
+      # Run `go` under sudo while preserving the Nix PATH (sudo's secure_path
+      # strips it). Separate build cache keeps root-owned files out of GOCACHE.
+      sudogo() {
+        sudo env "PATH=$PATH" GOCACHE=/tmp/go-root-cache go "$@"
       }
     '';
   };
