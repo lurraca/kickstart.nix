@@ -89,6 +89,16 @@
 
   hardware.cpu.intel.updateMicrocode = true;
 
+  # Bluetooth — the M920q has an Intel 9560 (Jefferson Peak) on the WiFi card.
+  # Home Assistant uses it for BLE sensors and presence detection, and it
+  # reaches the adapter over the host D-Bus socket bind-mounted into the
+  # container. Without this the adapter shows as hci0 but bluetooth.service is
+  # `not-found`, so HA discovers Bluetooth and then cannot use it.
+  hardware.bluetooth = {
+    enable = true;
+    powerOnBoot = true;
+  };
+
   # UHD 630 iGPU — QSV/VAAPI for Immich video transcoding once the library
   # moves here off the RTX 3070. See notes/homelab/homelab.md decision 10.
   hardware.graphics = {
