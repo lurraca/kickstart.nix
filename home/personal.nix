@@ -1,8 +1,7 @@
-{lib, pkgs, ...}: {
-  programs.git.settings.user = {
-    email = lib.mkForce "me@lurraca.com";
-    name = lib.mkForce "Luis Urraca";
-  };
+{pkgs, ...}: {
+  # Desktop-flavoured personal config. The git identity itself lives in
+  # identity-personal.nix so headless hosts (kodama) can reuse it alone.
+  imports = [ ./identity-personal.nix ];
 
   home.packages = with pkgs; [
     # Markdown vault reader — used to browse the robotina workspace

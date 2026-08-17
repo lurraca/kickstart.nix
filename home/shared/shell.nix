@@ -69,10 +69,6 @@
       unset _zdump
     '';
 
-    # Sourced from ~/.zprofile (login shells). Was a hand-edited ~/.zprofile.
-    profileExtra = ''
-      source ~/.netskope-env
-    '';
 
     # plugins:
     # https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins

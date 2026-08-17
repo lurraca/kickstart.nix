@@ -56,4 +56,17 @@
             - superclaude
             -
   '';
+
+  # Netskope is Zendesk's corporate security agent — work Mac only.
+  #
+  # Moved here from shared/shell.nix on 2026-08-17. It was an unguarded
+  # `source ~/.netskope-env` in the SHARED module, so every login shell on
+  # every host tried to read it — including the WSL box and kodama, which
+  # will never have that file. It surfaced as an error on kodama's first
+  # login. Guarded as well as relocated, since the file is created by the
+  # Netskope installer and may be absent even on the Mac.
+  programs.zsh.profileExtra = ''
+    [[ -f ~/.netskope-env ]] && source ~/.netskope-env
+    true
+  '';
 }
