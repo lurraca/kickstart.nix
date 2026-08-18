@@ -22,7 +22,32 @@
 
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [ 22 ];
+
+    # 8123 is Home Assistant. Opened on the LAN on 2026-08-18, deliberately,
+    # for Google Cast. A Cast device is not sent audio — it is handed a URL
+    # and fetches the media itself, so TTS announcements ("the washing machine
+    # has finished") fail unless the speakers can reach HA directly. Control
+    # alone works without this; anything HA *serves* does not.
+    #
+    # ⚠️ This is plain HTTP, so credentials and long-lived tokens cross the
+    # LAN unencrypted. The realistic threat is not a person, it is a
+    # compromised IoT device already on the network. Accepted because the
+    # alternative — a paid cloud relay or a public HTTPS endpoint — is worse
+    # on every axis that matters here. Still NAT'd: nothing is exposed to the
+    # internet, there is no port forward and no DDNS.
+    #
+    # Note the previous tailnet-only behaviour was never a decision, just the
+    # default of listing one port. Revisit if TLS is ever added (see the AMT
+    # note on 16993 in notes/homelab/inventory.md — same unencrypted-on-LAN
+    # trade-off, accepted for the same reason).
+    allowedTCPPorts = [ 22 8123 ];
+
+    # mDNS. Required twice over: Cast discovery, and Matter commissioning if
+    # the Matter bridge route is taken later. Without it HA never hears the
+    # speakers announce themselves — the devices were reachable on TCP 8009
+    # the whole time while discovery found nothing.
+    allowedUDPPorts = [ 5353 ];
+
     # Tailscale traffic bypasses the port list entirely.
     trustedInterfaces = [ "tailscale0" ];
     checkReversePath = "loose"; # required for Tailscale exit-node/subnet use
@@ -88,6 +113,17 @@
   zramSwap.enable = true;
 
   hardware.cpu.intel.updateMicrocode = true;
+
+  # Firmware updates from LVFS. Lenovo publishes BIOS and Management Engine
+  # updates for many ThinkCentre models here, so `fwupdmgr update` replaces
+  # the Windows-only .exe or a bootable USB — which matters on a headless box
+  # with no Windows installed.
+  #
+  # ⚠️ ME firmware updates are the reason to care: AMT listens on the LAN and
+  # has a real history of remotely exploitable flaws (e.g. CVE-2017-5689), so
+  # a machine with AMT enabled is one where firmware currency is a security
+  # property, not just housekeeping.
+  services.fwupd.enable = true;
 
   # Bluetooth — the M920q has an Intel 9560 (Jefferson Peak) on the WiFi card.
   # Home Assistant uses it for BLE sensors and presence detection, and it
