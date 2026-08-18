@@ -115,11 +115,30 @@
     # SQLite DB, which is not in git — same reasoning as the HA dashboard.
     provision = {
       enable = true;
+      # Dashboards provisioned from JSON in git (hosts/kodama/grafana/), not
+      # clicked into the UI — a clicked dashboard lives only in Grafana's DB.
+      dashboards.settings = {
+        apiVersion = 1;
+        providers = [{
+          name = "kodama";
+          options.path = "/etc/grafana-dashboards";
+          options.foldersFromFilesStructure = false;
+        }];
+      };
       datasources.settings = {
         apiVersion = 1;
+        # Delete-then-recreate handles the uid migration: Grafana treats a
+        # datasource uid as immutable, so adding a uid to an already-provisioned
+        # datasource fails with "data source not found". Deleting by name first
+        # clears the old auto-uid copy. Idempotent, safe to leave in place.
+        deleteDatasources = [
+          { name = "Prometheus"; orgId = 1; }
+          { name = "Loki"; orgId = 1; }
+        ];
         datasources = [
           {
             name = "Prometheus";
+            uid = "prometheus";   # stable UID so provisioned dashboards reference it
             type = "prometheus";
             access = "proxy";
             url = "http://127.0.0.1:9090";
@@ -130,6 +149,7 @@
             # when kodama's draw spikes at 03:00, you can read what was
             # logged at 03:00 without leaving the graph.
             name = "Loki";
+            uid = "loki";
             type = "loki";
             access = "proxy";
             url = "http://127.0.0.1:3100";
@@ -138,6 +158,10 @@
       };
     };
   };
+
+  # Place the provisioned dashboard JSON where Grafana's provider reads it.
+  environment.etc."grafana-dashboards/energy-health.json".source =
+    ./grafana/energy-health.json;
 
   # ── Loki ────────────────────────────────────────────────────────────────
   # Single-node, filesystem-backed. No object store, no external database —
