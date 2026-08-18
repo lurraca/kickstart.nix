@@ -61,6 +61,7 @@
         ./hosts/kodama/disk.nix
         ./hosts/kodama/persistence.nix
         ./hosts/kodama/configuration.nix
+        ./hosts/kodama/monitoring.nix
         { nixpkgs.overlays = [ piOverlay ]; }
         home-manager.nixosModules.home-manager {
           home-manager.useGlobalPkgs = true;
