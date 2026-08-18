@@ -107,9 +107,10 @@
           }
           {
             "Jellyfin" = {
-              href = "http://192.168.1.13:8096";
-              description = "Media — native Windows install";
+              href = "http://kodama:8096";
+              description = "Media — media over Tailscale from kasasagi";
               icon = "jellyfin.png";
+              siteMonitor = "http://127.0.0.1:8096/health";
             };
           }
         ];

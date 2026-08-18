@@ -63,6 +63,7 @@
         ./hosts/kodama/configuration.nix
         ./hosts/kodama/monitoring.nix
         ./hosts/kodama/homepage.nix
+        ./hosts/kodama/media.nix
         { nixpkgs.overlays = [ piOverlay ]; }
         home-manager.nixosModules.home-manager {
           home-manager.useGlobalPkgs = true;
