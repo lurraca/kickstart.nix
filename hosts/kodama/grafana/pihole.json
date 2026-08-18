@@ -47,7 +47,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100*sum(pihole_query_by_status{query_status=~\"GRAVITY.*|REGEX.*|DENYLIST.*|EXTERNAL_BLOCKED.*|SPECIAL_DOMAIN\"})/pihole_query_count",
+          "expr": "100*sum(pihole_query_by_status{query_status=~\"GRAVITY.*|REGEX.*|DENYLIST.*|EXTERNAL_BLOCKED.*|SPECIAL_DOMAIN\"})/sum(pihole_query_count)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -436,7 +436,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100*sum(pihole_query_by_status{query_status=~\"GRAVITY.*|REGEX.*|DENYLIST.*|EXTERNAL_BLOCKED.*|SPECIAL_DOMAIN\"})/pihole_query_count",
+          "expr": "100*sum(pihole_query_by_status{query_status=~\"GRAVITY.*|REGEX.*|DENYLIST.*|EXTERNAL_BLOCKED.*|SPECIAL_DOMAIN\"})/sum(pihole_query_count)",
           "legendFormat": "",
           "refId": "A"
         }
@@ -576,7 +576,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100*sum(pihole_query_by_status{query_status=~\"GRAVITY.*|REGEX.*|DENYLIST.*|EXTERNAL_BLOCKED.*|SPECIAL_DOMAIN\"})/pihole_query_count",
+          "expr": "100*sum(pihole_query_by_status{query_status=~\"GRAVITY.*|REGEX.*|DENYLIST.*|EXTERNAL_BLOCKED.*|SPECIAL_DOMAIN\"})/sum(pihole_query_count)",
           "legendFormat": "block %",
           "refId": "A"
         }
