@@ -117,16 +117,142 @@
       enable = true;
       datasources.settings = {
         apiVersion = 1;
-        datasources = [{
-          name = "Prometheus";
-          type = "prometheus";
-          access = "proxy";
-          url = "http://127.0.0.1:9090";
-          isDefault = true;
-        }];
+        datasources = [
+          {
+            name = "Prometheus";
+            type = "prometheus";
+            access = "proxy";
+            url = "http://127.0.0.1:9090";
+            isDefault = true;
+          }
+          {
+            # Metrics and logs on the same time axis is the actual payoff:
+            # when kodama's draw spikes at 03:00, you can read what was
+            # logged at 03:00 without leaving the graph.
+            name = "Loki";
+            type = "loki";
+            access = "proxy";
+            url = "http://127.0.0.1:3100";
+          }
+        ];
       };
     };
   };
+
+  # ── Loki ────────────────────────────────────────────────────────────────
+  # Single-node, filesystem-backed. No object store, no external database —
+  # like Prometheus and Grafana, this is a directory to protect rather than a
+  # service to dump.
+  #
+  # dataDir takes an ABSOLUTE path, so it goes straight to /srv with no bind
+  # mount. Prometheus is the odd one out there, not this.
+  services.loki = {
+    enable = true;
+    dataDir = "/srv/loki";
+
+    configuration = {
+      auth_enabled = false;
+
+      server = {
+        http_listen_address = "127.0.0.1"; # Grafana proxies; nothing external
+        http_listen_port = 3100;
+        grpc_listen_port = 9096;
+        log_level = "warn"; # a log system that spams its own logs is a loop
+      };
+
+      common = {
+        instance_addr = "127.0.0.1";
+        path_prefix = "/srv/loki";
+        replication_factor = 1;
+        ring.kvstore.store = "inmemory";
+        storage.filesystem = {
+          chunks_directory = "/srv/loki/chunks";
+          rules_directory = "/srv/loki/rules";
+        };
+      };
+
+      schema_config.configs = [{
+        from = "2026-01-01";
+        store = "tsdb";
+        object_store = "filesystem";
+        schema = "v13";
+        index = { prefix = "index_"; period = "24h"; };
+      }];
+
+      # 30 days, decided in notes/homelab/monitoring.md. Measured journal
+      # volume is ~24 MB/day, so this lands near 0.7 GB — modest. The cap
+      # exists for the case that actually bites: one service starting to spew.
+      limits_config = {
+        retention_period = "720h";
+        reject_old_samples = true;
+        reject_old_samples_max_age = "168h";
+        volume_enabled = true;
+      };
+
+      # ⚠️ Retention does NOT happen without the compactor. `retention_period`
+      # alone is silently ignored — the compactor is what enforces it.
+      compactor = {
+        working_directory = "/srv/loki/compactor";
+        retention_enabled = true;
+        delete_request_store = "filesystem";
+      };
+
+      analytics.reporting_enabled = false;
+    };
+  };
+
+  # ── Alloy — the log shipper ─────────────────────────────────────────────
+  # promtail is gone: it has been REMOVED from nixpkgs entirely, so Alloy is
+  # not merely the recommended agent, it is the available one.
+  #
+  # 🎯 One source covers everything, because Home Assistant's container uses
+  # the journald log driver. So HA, Docker, sshd, tailscaled and Prometheus
+  # all arrive through the same journal with no per-service configuration.
+  services.alloy.enable = true;
+
+  environment.etc."alloy/config.alloy".text = ''
+    // Lift the useful journald fields into Loki labels. Without this every
+    // line arrives as one undifferentiated stream and is far less queryable.
+    loki.relabel "journal" {
+      forward_to = []
+
+      rule {
+        source_labels = ["__journal__systemd_unit"]
+        target_label  = "unit"
+      }
+      rule {
+        source_labels = ["__journal__hostname"]
+        target_label  = "host"
+      }
+      rule {
+        source_labels = ["__journal_priority_keyword"]
+        target_label  = "level"
+      }
+      rule {
+        source_labels = ["__journal_container_name"]
+        target_label  = "container"
+      }
+    }
+
+    loki.source.journal "read" {
+      forward_to    = [loki.write.local.receiver]
+      relabel_rules = loki.relabel.journal.rules
+      labels        = { job = "systemd-journal" }
+      max_age       = "12h"
+    }
+
+    loki.write "local" {
+      endpoint {
+        url = "http://127.0.0.1:3100/loki/api/v1/push"
+      }
+    }
+  '';
+
+  # ⚠️ Alloy cannot read the journal without this. The unit runs as its own
+  # user, and journal access is granted by GROUP membership, not by file
+  # permissions — so without it Alloy starts cleanly, reports no error, and
+  # ships nothing. Silent failure, which is the worst kind.
+  systemd.services.alloy.serviceConfig.SupplementaryGroups = [ "systemd-journal" ];
 
   # ⚠️ No firewall entries. Grafana on :3000 and Prometheus on :9090 stay
   # reachable over tailscale0 ONLY, which is already a trusted interface.
