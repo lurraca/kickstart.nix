@@ -85,6 +85,14 @@
             };
           }
           {
+            "Pi-hole" = {
+              href = "http://kodama:8081/admin/";
+              description = "DNS ad-blocking + encrypted (DoH) upstream";
+              icon = "pi-hole.png";
+              siteMonitor = "http://127.0.0.1:8081/admin/";
+            };
+          }
+          {
             "Prometheus" = {
               href = "http://kodama:9090";
               description = "TSDB — 30s scrape, 365d retention";
