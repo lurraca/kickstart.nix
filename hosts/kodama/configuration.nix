@@ -40,13 +40,26 @@
     # default of listing one port. Revisit if TLS is ever added (see the AMT
     # note on 16993 in notes/homelab/inventory.md — same unencrypted-on-LAN
     # trade-off, accepted for the same reason).
-    allowedTCPPorts = [ 22 8123 ];
+    #
+    # 8096 is Jellyfin. Opened on the LAN for the same reason as 8123: the
+    # devices that consume it — Samsung TV, Chromecast, Nest Hub — are not on
+    # the tailnet and cannot be. Tailscale covers phones and laptops; a TV app
+    # has no way to join a tailnet, so LAN is the only path.
+    #
+    # Unlike 8123 this is not a credential-carrying admin surface by default,
+    # but it IS a login page on plain HTTP, so the same caveat applies: the
+    # realistic threat is a compromised device already on the network.
+    allowedTCPPorts = [ 22 8123 8096 ];
 
     # mDNS. Required twice over: Cast discovery, and Matter commissioning if
     # the Matter bridge route is taken later. Without it HA never hears the
     # speakers announce themselves — the devices were reachable on TCP 8009
     # the whole time while discovery found nothing.
-    allowedUDPPorts = [ 5353 ];
+    #
+    # 7359 is Jellyfin's own client auto-discovery broadcast — without it the
+    # TV and phone apps cannot find the server by themselves and every client
+    # has to be pointed at the address by hand.
+    allowedUDPPorts = [ 5353 7359 ];
 
     # Tailscale traffic bypasses the port list entirely.
     trustedInterfaces = [ "tailscale0" ];
