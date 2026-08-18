@@ -77,6 +77,14 @@
             };
           }
           {
+            "Backrest" = {
+              href = "http://kodama:9898";
+              description = "Encrypted /srv backups to Cloudflare R2";
+              icon = "backrest.png";
+              siteMonitor = "http://127.0.0.1:9898/";
+            };
+          }
+          {
             "Grafana" = {
               href = "http://kodama:3000";
               description = "Metrics and logs, beyond 24h";
