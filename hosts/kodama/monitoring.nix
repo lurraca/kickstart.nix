@@ -56,6 +56,10 @@
         static_configs = [{ targets = [ "127.0.0.1:9100" ]; }];
       }
       {
+        job_name = "pihole";
+        static_configs = [{ targets = [ "127.0.0.1:9666" ]; }];
+      }
+      {
         # Home Assistant's built-in prometheus integration. This is what makes
         # the stack worth building rather than duplicating HA: every entity
         # becomes a metric — Tapo per-outlet power, electricity_unit_rate, the
@@ -162,6 +166,8 @@
   # Place the provisioned dashboard JSON where Grafana's provider reads it.
   environment.etc."grafana-dashboards/energy-health.json".source =
     ./grafana/energy-health.json;
+  environment.etc."grafana-dashboards/pihole.json".source =
+    ./grafana/pihole.json;
 
   # ── Loki ────────────────────────────────────────────────────────────────
   # Single-node, filesystem-backed. No object store, no external database —

@@ -79,4 +79,43 @@
   # Bind-mount /var/lib/pihole from /srv/pihole (merges with the tailscale +
   # prometheus2 entries defined in the other host modules).
   kodama.persist = [ "pihole" ];
+  # ── Pi-hole → Prometheus exporter ───────────────────────────────────────
+  # bazmonk/pihole6_exporter — the v6-API exporter (the popular eko one is
+  # still v5/setupVars-based). A self-contained Python script; packaged here
+  # as a systemd service since it is not in nixpkgs. Exposes :9666, scraped
+  # by Prometheus (job added in monitoring.nix).
+  systemd.services.pihole6-exporter =
+    let
+      rawSrc = pkgs.fetchFromGitHub {
+        owner = "bazmonk";
+        repo = "pihole6_exporter";
+        rev = "f7ab74b84a9f9163874e37b1f753420a1e61db75";
+        hash = "sha256-XB5AlosD0UmIzo32nbGRxVUgRPHYClC65qjO9Xwynu4=";
+      };
+      # The exporter hardcodes https://<host>:443 for the Pi-hole API. Ours is
+      # HTTP on :8081, so patch the base URL at build time. Covers both the
+      # auth and query URLs (same substring).
+      src = pkgs.runCommand "pihole6-exporter" { } ''
+        mkdir -p $out
+        cp ${rawSrc}/pihole6_exporter $out/pihole6_exporter
+        substituteInPlace $out/pihole6_exporter \
+          --replace-fail 'https://" + self.host + ":443' 'http://" + self.host + ":8081'
+      '';
+      py = pkgs.python3.withPackages (ps: with ps; [ requests urllib3 prometheus-client ]);
+    in {
+      description = "Pi-hole v6 Prometheus exporter";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "pihole-ftl.service" ];
+      serviceConfig = {
+        # -k takes the API key as an arg. Wrapped in bash so it comes from the
+        # EnvironmentFile rather than being written into the Nix store. It is
+        # still visible in `ps` to root on this single-user box — acceptable;
+        # an app-password would be marginally cleaner.
+        EnvironmentFile = "/srv/secrets/pihole-exporter.env";
+        ExecStart = "${pkgs.bash}/bin/bash -c '${py}/bin/python ${src}/pihole6_exporter -H 127.0.0.1 -p 9666 -k \"$PIHOLE_KEY\"'";
+        DynamicUser = true;
+        Restart = "on-failure";
+        RestartSec = 5;
+      };
+    };
 }
