@@ -168,6 +168,8 @@
     ./grafana/energy-health.json;
   environment.etc."grafana-dashboards/pihole.json".source =
     ./grafana/pihole.json;
+  environment.etc."grafana-dashboards/fitness.json".source =
+    ./grafana/fitness.json;
 
   # ── Loki ────────────────────────────────────────────────────────────────
   # Single-node, filesystem-backed. No object store, no external database —
