@@ -19,19 +19,81 @@
     # Widget API keys live here, NOT in this file — kickstart.nix is public.
     # Referenced below as {{HOMEPAGE_VAR_*}}. Same pattern as the Grafana
     # secret key and the Prometheus bearer token.
-    environmentFile = "/srv/secrets/homepage.env";
+    # `environmentFiles` (plural) — `environmentFile` is deprecated upstream
+    # and was throwing a build-time warning on every rebuild.
+    environmentFiles = [ "/srv/secrets/homepage.env" ];
 
     settings = {
       title = "kodama";
       theme = "dark";
-      color = "slate";
-      headerStyle = "clean";
+      # 🎯 Was "slate" on a slate-800 body — heading/card color and page
+      # background were the same hue, so everything read as one flat gray
+      # slab (this is what "the design is very bad" was). "sky" gives
+      # headings, hover states and icons actual contrast against the body.
+      color = "sky";
+      headerStyle = "boxedWidgets";
+      cardBlur = "md";
+      fullWidth = true;
       layout = [
         { "kodama" = { style = "row"; columns = 3; }; }
         { "Media & photos" = { style = "row"; columns = 2; }; }
         { "Infrastructure" = { style = "row"; columns = 4; }; }
       ];
     };
+
+    # No background image — an external URL is a dependency this box
+    # shouldn't have (link rot, breaks the "works with no internet" story
+    # everything else here follows). The glow is a pure-CSS gradient instead,
+    # paired with cardBlur above so the glass effect actually has something
+    # to blur.
+    customCSS = ''
+      html, body {
+        background: radial-gradient(circle at 12% 8%, rgba(56, 189, 248, 0.12), transparent 42%),
+                    radial-gradient(circle at 88% 92%, rgba(167, 139, 250, 0.12), transparent 45%),
+                    linear-gradient(160deg, #0b1120 0%, #0f172a 55%, #0b1120 100%) !important;
+        background-attachment: fixed !important;
+      }
+
+      /* Homepage paints an opaque theme-color fill on #__next, on top of
+         body — it fully hides the gradient above unless overridden here. */
+      #__next {
+        background: transparent !important;
+      }
+
+      .service-card {
+        border: 1px solid rgba(148, 163, 184, 0.14) !important;
+        border-radius: 0.85rem !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+        transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+      }
+
+      .service-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(56, 189, 248, 0.5) !important;
+        box-shadow: 0 8px 28px rgba(56, 189, 248, 0.15) !important;
+      }
+
+      .service-group-name {
+        position: relative;
+        padding-left: 0.75rem;
+        letter-spacing: 0.02em;
+      }
+
+      .service-group-name::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.15em;
+        bottom: 0.15em;
+        width: 3px;
+        border-radius: 2px;
+        background: linear-gradient(180deg, #38bdf8, #a78bfa);
+      }
+
+      .services-group {
+        margin-bottom: 1.5rem;
+      }
+    '';
 
     widgets = [
       # kodama's own vitals. disk points at /srv because that is the volume

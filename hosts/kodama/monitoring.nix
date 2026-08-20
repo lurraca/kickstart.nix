@@ -80,12 +80,11 @@
         static_configs = [{ targets = [ "192.168.1.13:9182" ]; }];
       }
       {
-        # nvidia_gpu_exporter, running inside kasasagi's WSL (not native
-        # Windows) via a systemd --user service. Only reachable over the LAN
-        # once WSL mirrored networking is enabled (20 Aug) — WSL's default
-        # NAT mode doesn't expose ports bound inside the VM to the LAN at
-        # all, unlike windows_exporter above which is a native Windows
-        # service and only needed a firewall rule.
+        # nvidia_gpu_exporter, native Windows service on kasasagi via NSSM
+        # (winget install, same pattern as windows_exporter above — the WSL
+        # + systemd --user route hit a PATH gotcha for nvidia-smi and would
+        # have needed WSL mirrored networking just to reach the LAN; native
+        # avoids both, nvidia-smi.exe already works on the Windows host).
         job_name = "nvidia-gpu-exporter";
         static_configs = [{ targets = [ "192.168.1.13:9835" ]; }];
       }
@@ -188,6 +187,8 @@
     ./grafana/fitness.json;
   environment.etc."grafana-dashboards/logs.json".source =
     ./grafana/logs.json;
+  environment.etc."grafana-dashboards/kasasagi-gaming.json".source =
+    ./grafana/kasasagi-gaming.json;
 
   # ── Loki ────────────────────────────────────────────────────────────────
   # Single-node, filesystem-backed. No object store, no external database —
