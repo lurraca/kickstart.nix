@@ -1,0 +1,212 @@
+{
+  "uid": "kodama-logs",
+  "title": "kodama — Logs",
+  "tags": [
+    "kodama",
+    "logs",
+    "loki"
+  ],
+  "timezone": "Europe/Dublin",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "🔥 Problems right now (last 1h, all services)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Error / warning count by service, last 1h",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (unit, container) (count_over_time({job=\"systemd-journal\", level=~\"err|crit|alert|emerg|warning\"} !~ \"session-[0-9]+\\\\.scope\" [1h]))",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": []
+      },
+      "options": {
+        "sortBy": [{ "displayName": "Value", "desc": true }]
+      }
+    },
+
+    { "id": 10, "type": "row", "title": "🎬 Jellyfin", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 }, "panels": [] },
+    {
+      "id": 11, "type": "timeseries", "title": "Log volume",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 7, "x": 0, "y": 8 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"jellyfin\"} |~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" [$__interval]))", "refId": "A", "legendFormat": "Error" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"jellyfin\"} |~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "B", "legendFormat": "Warning" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"jellyfin\"} !~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" !~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "C", "legendFormat": "Info" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "lineInterpolation": "linear", "barAlignment": 0, "barWidthFactor": 0.9, "lineWidth": 1, "fillOpacity": 100, "gradientMode": "none", "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" },
+          "color": { "mode": "palette-classic" },
+          "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Error" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Info" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } }
+    },
+    {
+      "id": 12, "type": "logs", "title": "Logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 17, "x": 7, "y": 8 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "loki" }, "expr": "{job=\"systemd-journal\", container=\"jellyfin\"}", "refId": "A" }],
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+
+    { "id": 20, "type": "row", "title": "🏠 Home Assistant", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }, "panels": [] },
+    {
+      "id": 21, "type": "timeseries", "title": "Log volume",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 7, "x": 0, "y": 17 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"homeassistant\"} |~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" [$__interval]))", "refId": "A", "legendFormat": "Error" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"homeassistant\"} |~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "B", "legendFormat": "Warning" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"homeassistant\"} !~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" !~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "C", "legendFormat": "Info" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "lineInterpolation": "linear", "barAlignment": 0, "barWidthFactor": 0.9, "lineWidth": 1, "fillOpacity": 100, "gradientMode": "none", "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" },
+          "color": { "mode": "palette-classic" },
+          "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Error" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Info" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } }
+    },
+    {
+      "id": 22, "type": "logs", "title": "Logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 17, "x": 7, "y": 17 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "loki" }, "expr": "{job=\"systemd-journal\", container=\"homeassistant\"}", "refId": "A" }],
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+
+    { "id": 30, "type": "row", "title": "💾 Backrest", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }, "panels": [] },
+    {
+      "id": 31, "type": "timeseries", "title": "Log volume",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 7, "x": 0, "y": 26 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"backrest\"} |~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" [$__interval]))", "refId": "A", "legendFormat": "Error" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"backrest\"} |~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "B", "legendFormat": "Warning" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", container=\"backrest\"} !~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" !~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "C", "legendFormat": "Info" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "lineInterpolation": "linear", "barAlignment": 0, "barWidthFactor": 0.9, "lineWidth": 1, "fillOpacity": 100, "gradientMode": "none", "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" },
+          "color": { "mode": "palette-classic" },
+          "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Error" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Info" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } }
+    },
+    {
+      "id": 32, "type": "logs", "title": "Logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 17, "x": 7, "y": 26 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "loki" }, "expr": "{job=\"systemd-journal\", container=\"backrest\"}", "refId": "A" }],
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+
+    { "id": 40, "type": "row", "title": "🛡️ Pi-hole", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 }, "panels": [] },
+    {
+      "id": 41, "type": "timeseries", "title": "Log volume",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 7, "x": 0, "y": 35 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", unit=~\"pihole.*\"} |~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" [$__interval]))", "refId": "A", "legendFormat": "Error" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", unit=~\"pihole.*\"} |~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "B", "legendFormat": "Warning" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", unit=~\"pihole.*\"} !~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" !~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "C", "legendFormat": "Info" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "lineInterpolation": "linear", "barAlignment": 0, "barWidthFactor": 0.9, "lineWidth": 1, "fillOpacity": 100, "gradientMode": "none", "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" },
+          "color": { "mode": "palette-classic" },
+          "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Error" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Info" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } }
+    },
+    {
+      "id": 42, "type": "logs", "title": "Logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 17, "x": 7, "y": 35 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "loki" }, "expr": "{job=\"systemd-journal\", unit=~\"pihole.*\"}", "refId": "A" }],
+      "options": { "showTime": true, "showLabels": true, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+
+    { "id": 50, "type": "row", "title": "⚙️ System (Grafana / Prometheus / Alloy / sshd / tailscaled / …)", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 }, "panels": [] },
+    {
+      "id": 51, "type": "timeseries", "title": "Log volume",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 7, "x": 0, "y": 44 },
+      "targets": [
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", unit=~\"alloy.service|docker.service|grafana.service|prometheus.service|homepage-dashboard.service|sshd.service|tailscaled.service|nix-daemon.service|fwupd-refresh.service\"} |~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" [$__interval]))", "refId": "A", "legendFormat": "Error" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", unit=~\"alloy.service|docker.service|grafana.service|prometheus.service|homepage-dashboard.service|sshd.service|tailscaled.service|nix-daemon.service|fwupd-refresh.service\"} |~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "B", "legendFormat": "Warning" },
+        { "datasource": { "type": "loki", "uid": "loki" }, "expr": "sum(count_over_time({job=\"systemd-journal\", unit=~\"alloy.service|docker.service|grafana.service|prometheus.service|homepage-dashboard.service|sshd.service|tailscaled.service|nix-daemon.service|fwupd-refresh.service\"} !~ \"(?i)\\\\b(error|err|fatal|critical|panic)\\\\b\" !~ \"(?i)\\\\b(warn|warning)\\\\b\" [$__interval]))", "refId": "C", "legendFormat": "Info" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "lineInterpolation": "linear", "barAlignment": 0, "barWidthFactor": 0.9, "lineWidth": 1, "fillOpacity": 100, "gradientMode": "none", "stacking": { "mode": "normal", "group": "A" }, "showPoints": "never" },
+          "color": { "mode": "palette-classic" },
+          "min": 0
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Error" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Warning" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Info" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "none" } }
+    },
+    {
+      "id": 52, "type": "logs", "title": "Logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 17, "x": 7, "y": 44 },
+      "targets": [{ "datasource": { "type": "loki", "uid": "loki" }, "expr": "{job=\"systemd-journal\", unit=~\"alloy.service|docker.service|grafana.service|prometheus.service|homepage-dashboard.service|sshd.service|tailscaled.service|nix-daemon.service|fwupd-refresh.service\"}", "refId": "A" }],
+      "options": { "showTime": true, "showLabels": true, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    }
+  ]
+}

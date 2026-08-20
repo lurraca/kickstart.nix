@@ -106,6 +106,16 @@
       description = "Pi-hole v6 Prometheus exporter";
       wantedBy = [ "multi-user.target" ];
       after = [ "pihole-ftl.service" ];
+      # partOf, not just after: the exporter authenticates ONCE at startup
+      # (self.sid = get_sid(key) in __init__) and has no re-auth/retry logic
+      # in get_api_call. If pihole-ftl restarts for any reason, that cached
+      # session goes stale and every /metrics scrape throws a bare KeyError
+      # forever - the process itself never crashes, so Restart=on-failure
+      # below never fires either. partOf propagates pihole-ftl's restarts to
+      # this unit too, so it always re-authenticates on a fresh session.
+      # Found 20 Aug via the Loki logs dashboard, after a `pihole-ftl`
+      # restart during unrelated DNS troubleshooting silently broke this.
+      partOf = [ "pihole-ftl.service" ];
       serviceConfig = {
         # -k takes the API key as an arg. Wrapped in bash so it comes from the
         # EnvironmentFile rather than being written into the Nix store. It is

@@ -73,6 +73,22 @@
         # git. See notes/homelab/monitoring.md for how to regenerate it.
         authorization.credentials_file = "/srv/secrets/ha-prometheus-token";
       }
+      {
+        # kasasagi, the gaming PC — not always-on, so this target reads "down"
+        # in Prometheus whenever it's off. That's expected, not a fault.
+        job_name = "windows-exporter";
+        static_configs = [{ targets = [ "192.168.1.13:9182" ]; }];
+      }
+      {
+        # nvidia_gpu_exporter, running inside kasasagi's WSL (not native
+        # Windows) via a systemd --user service. Only reachable over the LAN
+        # once WSL mirrored networking is enabled (20 Aug) — WSL's default
+        # NAT mode doesn't expose ports bound inside the VM to the LAN at
+        # all, unlike windows_exporter above which is a native Windows
+        # service and only needed a firewall rule.
+        job_name = "nvidia-gpu-exporter";
+        static_configs = [{ targets = [ "192.168.1.13:9835" ]; }];
+      }
     ];
   };
 
@@ -170,6 +186,8 @@
     ./grafana/pihole.json;
   environment.etc."grafana-dashboards/fitness.json".source =
     ./grafana/fitness.json;
+  environment.etc."grafana-dashboards/logs.json".source =
+    ./grafana/logs.json;
 
   # ── Loki ────────────────────────────────────────────────────────────────
   # Single-node, filesystem-backed. No object store, no external database —
