@@ -62,4 +62,38 @@
       "noserverino"
     ];
   };
+
+  # A SEPARATE read-write mount to the same share, for Sonarr/Radarr's final
+  # import step (servarr.nix) — deliberately not just dropping "ro" from the
+  # mount above. Jellyfin's mount stays exactly as reasoned and untouched;
+  # this is a second, independent mount instance instead of loosening an
+  # existing guarantee.
+  fileSystems."/data/media-rw" = {
+    device = "//100.97.61.16/Media";
+    fsType = "cifs";
+
+    options = [
+      "credentials=/srv/secrets/smb-kasasagi"
+
+      "x-systemd.automount"
+      "noauto"
+      "x-systemd.idle-timeout=600"
+      "x-systemd.device-timeout=10s"
+      "x-systemd.mount-timeout=10s"
+      "nofail"
+
+      # World-writable, not scoped to one UID: Sonarr and Radarr run as
+      # different service users, and CIFS only supports one uid/gid pairing
+      # per mount (no per-file ownership mapping like a real POSIX
+      # filesystem) — same reasoning the read-only mount above already uses
+      # for world-readable, just the write-side mirror of it. Only local,
+      # trusted services on kodama ever touch this path.
+      "file_mode=0666"
+      "dir_mode=0777"
+
+      "iocharset=utf8"
+      "vers=3.0"
+      "noserverino"
+    ];
+  };
 }

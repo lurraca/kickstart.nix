@@ -52,6 +52,8 @@
         # only), so a clean 2x2 grid with no ragged trailing row.
         { "Kodama services" = { style = "row"; columns = 2; }; }
         { "Media & photos" = { style = "row"; columns = 2; }; }
+        # 6 uniform link cards (icon + description only), one row.
+        { "Media acquisition" = { style = "row"; columns = 6; }; }
         { "Infrastructure" = { style = "row"; columns = 4; }; }
       ];
     };
@@ -432,6 +434,67 @@
               description = "Media — media over Tailscale from kasasagi";
               icon = "jellyfin.png";
               siteMonitor = "http://127.0.0.1:8096/health";
+            };
+          }
+        ];
+      }
+      {
+        # Sonarr/Radarr/Prowlarr/Bazarr/Seerr — all native NixOS services
+        # (servarr.nix), not Docker. qBittorrent deliberately not here yet —
+        # blocked on a NordVPN WireGuard key.
+        "Media acquisition" = [
+          {
+            "Sonarr" = {
+              href = "http://kodama:8989";
+              description = "TV — western content only for now";
+              icon = "sonarr.png";
+              siteMonitor = "http://127.0.0.1:8989";
+            };
+          }
+          {
+            "Radarr" = {
+              href = "http://kodama:7878";
+              description = "Movies";
+              icon = "radarr.png";
+              siteMonitor = "http://127.0.0.1:7878";
+            };
+          }
+          {
+            "Prowlarr" = {
+              href = "http://kodama:9696";
+              description = "Indexer manager — feeds Sonarr/Radarr";
+              icon = "prowlarr.png";
+              siteMonitor = "http://127.0.0.1:9696";
+            };
+          }
+          {
+            "Bazarr" = {
+              href = "http://kodama:6767";
+              description = "Subtitle automation";
+              icon = "bazarr.png";
+              siteMonitor = "http://127.0.0.1:6767";
+            };
+          }
+          {
+            "Seerr" = {
+              href = "http://kodama:5055";
+              description = "Request UI for Jellyfin — formerly Jellyseerr";
+              icon = "jellyseerr.png";
+              siteMonitor = "http://127.0.0.1:5055";
+            };
+          }
+          {
+            "qBittorrent" = {
+              # 🔴 Was http://10.200.200.2:8080 (the veth address) directly —
+              # worked from kodama itself but was unreachable from any other
+              # tailnet device (kasasagi included), since that address only
+              # exists on kodama's own host network stack. A host-side socat
+              # forward (servarr.nix, qbittorrent-webui-proxy) now relays
+              # kodama:8080 to it, same reachability as every other card here.
+              href = "http://kodama:8080";
+              description = "VPN-confined via a WireGuard network namespace — no Docker involved";
+              icon = "qbittorrent.png";
+              siteMonitor = "http://127.0.0.1:8080";
             };
           }
         ];

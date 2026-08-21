@@ -65,6 +65,7 @@
         ./hosts/kodama/homepage.nix
         ./hosts/kodama/media.nix
         ./hosts/kodama/pihole.nix
+        ./hosts/kodama/servarr.nix
         { nixpkgs.overlays = [ piOverlay ]; }
         home-manager.nixosModules.home-manager {
           home-manager.useGlobalPkgs = true;
