@@ -189,6 +189,11 @@
     ./grafana/logs.json;
   environment.etc."grafana-dashboards/kasasagi-gaming.json".source =
     ./grafana/kasasagi-gaming.json;
+  # Failed-unit visibility. `systemctl is-system-running` reports "degraded"
+  # whenever any unit is failed, and node_exporter's --collector.systemd already
+  # exports node_systemd_unit_state, so this costs no new scrape config.
+  environment.etc."grafana-dashboards/systemd-health.json".source =
+    ./grafana/systemd-health.json;
 
   # ── Loki ────────────────────────────────────────────────────────────────
   # Single-node, filesystem-backed. No object store, no external database —

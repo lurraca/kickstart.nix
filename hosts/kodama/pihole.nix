@@ -23,9 +23,75 @@
     enable = true;
     address = "127.0.0.1";
     port = 5053;
-    provider.kind = "cloudflare";   # DoH to Cloudflare (1.1.1.1 / 1.0.0.1)
+    # ⚠️ NOT provider.kind = "cloudflare". That preset uses
+    # `-r https://cloudflare-dns.com/dns-query`, so on boot the proxy must
+    # resolve that hostname via its bootstrap resolvers BEFORE it can serve
+    # anything. Pi-hole's only upstream is this proxy, so if that lookup fails
+    # the box has no DNS at all and cannot recover — the proxy sits in
+    # "Query received before bootstrapping is completed, discarding" forever.
+    #
+    # Observed for real on the 29 Aug 2026 reboot: whole-house DNS stayed down
+    # ~45 min. Using the IP directly removes the bootstrap step entirely —
+    # Cloudflare serves DoH on 1.1.1.1 with a valid cert, so there is no
+    # hostname to look up and nothing to deadlock on.
+    provider = {
+      kind = "custom";
+      ips = [ "1.1.1.1" "1.0.0.1" ];
+      url = "https://1.1.1.1/dns-query";
+    };
     preferIPv4 = true;
   };
+
+  # ── Boot ordering: the proxy MUST NOT start before the network ──────────
+  # The upstream unit is ordered `After=network.target`, which only means the
+  # networking *stack* is loaded — not that eno2 has an address. https_dns_proxy
+  # EXITS (status 1) if it cannot reach its resolver at startup, so on a cold
+  # boot it burned through 6 restarts in ~1s, hit systemd's start limiter, and
+  # was left `failed` permanently:
+  #
+  #   https-dns-proxy.service: Start request repeated too quickly.
+  #   https-dns-proxy.service: Failed with result 'start-limit-hit'.
+  #
+  # Observed 29 Aug 2026. The knock-on is severe and non-obvious: no DoH means
+  # Pi-hole has no upstream, which means kodama has no DNS (it resolves via
+  # 127.0.0.1), which means tailscaled cannot resolve controlplane.tailscale.com
+  # and never joins the tailnet — so the box is unreachable over Tailscale and,
+  # if the tailnet global nameserver points here, the whole tailnet loses DNS.
+  #
+  # network-online.target waits for an actual address. The longer restart window
+  # is belt-and-braces so a transient failure can never exhaust the limiter.
+  systemd.services.https-dns-proxy = {
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    serviceConfig = {
+      RestartSec = "5s";
+      StartLimitBurst = 0;      # never give up permanently
+    };
+  };
+
+  # ── kodama resolves via its own Pi-hole ─────────────────────────────────
+  # Without this, kodama has no working DNS of its own:
+  #   - accept-dns=true → Tailscale sends it to 100.100.100.100, which forwards
+  #     to the tailnet global nameserver = kodama itself. Circular. It works
+  #     while everything is already running, and DEADLOCKS on a cold boot
+  #     because Pi-hole isn't serving yet (observed 29 Aug 2026, ~45 min outage).
+  #   - accept-dns=false → falls back to the router at 192.168.1.1, which does
+  #     not answer DNS at all, so nothing on kodama can resolve. Backrest's R2
+  #     uploads, docker pulls and nix all fail silently.
+  #
+  # Pointing at localhost is the canonical NixOS pattern for a host that IS the
+  # resolver — nixpkgs does exactly this in dnsmasq.nix (`networking.nameservers
+  # = lib.optional cfg.resolveLocalQueries "127.0.0.1"`), dnscrypt-proxy and
+  # bind. services.pihole-ftl has no resolveLocalQueries equivalent, so it must
+  # be set by hand.
+  #
+  # No loop: Pi-hole's upstream is 127.0.0.1#5053, and https-dns-proxy targets
+  # https://1.1.1.1/dns-query — an IP. Nothing needs a hostname resolved in
+  # order to resolve hostnames.
+  #
+  # ⚠️ Keep `tailscale set --accept-dns=false` on kodama. It is a runtime pref,
+  # NOT captured by this config, so a reinstall must set it again.
+  networking.nameservers = [ "127.0.0.1" ];
 
   # ── Pi-hole FTL: DNS server + blocking ──────────────────────────────────
   services.pihole-ftl = {
