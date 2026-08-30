@@ -117,13 +117,25 @@
     # World-writable: DynamicUser assigns a transient UID, not a fixed one,
     # so there's no single owner to chown this to ahead of time.
     "d /srv/seerr 0777 - - -"
-    # qBittorrent's local staging area (Luis's choice: stage locally on
-    # kodama's fast SSD rather than torrent-download directly over the
-    # /data/media-rw CIFS mount, avoiding sustained network I/O for the
-    # active-download phase). World-writable for the same DynamicUser-style
-    # reason isn't actually needed here — qbittorrent runs as a fixed user
-    # — but 0755 with explicit ownership below is enough.
-    "d /data/downloads 0755 qbittorrent qbittorrent -"
+    # 🎯 qBittorrent's download directory, and it MUST be on the same
+    # filesystem as the library. Sonarr and Radarr both set
+    # copyUsingHardlinks = true, but a hardlink cannot cross a filesystem
+    # boundary — so when downloads lived on /data (the NVMe) and the library
+    # on /data/media (the SATA drive), that setting silently degraded to a
+    # full byte-for-byte copy on every import, and every seeding file existed
+    # twice on disk. No error, just slow imports and double storage.
+    #
+    # Moved here 2026-08-30. It sits on lv-media alongside the library but
+    # OUTSIDE every library root (/data/media/{Movies,TV Shows,Anime,...}),
+    # so Jellyfin never scans it and imports are now instant metadata ops.
+    #
+    # Group `media` + setgid so Sonarr/Radarr (also in that group) can read
+    # the completed files in order to link them.
+    #
+    # ⚠️ The original reasoning — stage on the fast local SSD rather than
+    # torrent directly over the CIFS mount — is obsolete: the library is no
+    # longer a network share, it is a local disk.
+    "d /data/media/downloads 2775 qbittorrent media -"
   ];
 
   # NordVPN's own DNS, used ONLY inside the wg-vpn namespace (bind-mounted
@@ -218,7 +230,9 @@
     profileDir = "/srv/qbittorrent";
     webuiPort = 8080;
     serverConfig = {
-      Preferences.Downloads.SavePath = "/data/downloads";
+      # Same filesystem as the library, so *arr imports hardlink. See the
+      # tmpfiles rule above for why this matters.
+      Preferences.Downloads.SavePath = "/data/media/downloads";
       # Binds on every interface inside the namespace, so it's reachable on
       # both the namespace's own loopback AND the veth-wg address
       # (10.200.200.2) — which is how the host (and Sonarr/Radarr) actually
@@ -228,6 +242,13 @@
   };
 
   systemd.services.qbittorrent = {
+    # 🔴 Do not start before the media volume is mounted. Without this, a
+    # failed LUKS unlock would leave /data/media as a bare directory on the
+    # NVMe, tmpfiles would happily create downloads/ inside it, and torrents
+    # would land on the wrong disk — invisibly, until the mount came back and
+    # shadowed them.
+    unitConfig.RequiresMountsFor = "/data/media";
+
     # Both directions of the killswitch: after/bindsTo means qbittorrent
     # won't start before the tunnel is up, AND stops automatically if the
     # tunnel service stops for any reason — belt-and-suspenders on top of

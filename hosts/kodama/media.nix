@@ -1,16 +1,40 @@
 { config, lib, pkgs, ... }:
-# Media share from kasasagi (the Windows gaming PC), mounted over Tailscale.
+# The old home of the media library: a CIFS share on kasasagi (the Windows
+# gaming PC), mounted over Tailscale.
 #
-# WHY THIS PATH: /data/media is where the 6 TB external drive will eventually
-# mount. Jellyfin only ever knows /data/media, so when the drive arrives the
-# migration is "copy files, swap what is mounted here" — no library re-scan, no
-# lost watch history. Same trick immich-setup.md uses for UPLOAD_LOCATION.
+# 🔴 NO LONGER IMPORTED (removed from flake.nix on 2026-08-30). Kept on disk as
+# the historical record of how the media was served before it moved; delete it
+# whenever you want. It is not built, so nothing here affects the system.
+#
+# Why it was dropped rather than kept: the one file it existed to re-copy —
+# Spider-Man Far From Home — was recovered directly from Windows (readable
+# locally; only the SMB share ACL denied the `jellyfin` user), and C:\Media was
+# then deleted. The share now points at a directory that does not exist, so the
+# mount unit failed on the next boot. Purpose spent.
+#
+# ⚠️ RETIRED as the library's location on 2026-08-29. The library now lives on
+# kodama's own encrypted 2 TB SATA drive — see storage.nix, which owns
+# /data/media and /data/photos. The migration was exactly the swap this file's
+# original comment predicted: copy the files, change what is mounted at
+# /data/media, and Jellyfin never noticed.
+#
+# WHAT SURVIVES, AND WHY. One read-only mount, at a neutral path, kept for
+# one-off pulls from the gaming PC — the source library is still there, and
+# one file never made it across: Spider-Man Far From Home's mp4 is unreadable
+# even as root over CIFS (the NTFS ACL denies it; the 0444 mode CIFS reports
+# is synthesised from the mount options, not real). If that gets fixed on the
+# Windows side, this is the path to re-copy it from.
+#
+# It costs nothing at boot: `noauto` + `x-systemd.automount` means it is only
+# touched on first access, and fails cleanly when the PC is off, which is its
+# normal state. Delete this file and its flake import when the gaming PC no
+# longer holds anything worth pulling.
 {
   # cifs-utils provides mount.cifs, which the kernel calls to negotiate SMB.
   # Without it the mount fails with "unknown filesystem type".
   environment.systemPackages = [ pkgs.cifs-utils ];
 
-  fileSystems."/data/media" = {
+  fileSystems."/mnt/kasasagi-media" = {
     # Tailnet IP, not the MagicDNS name, and not the LAN IP:
     #   - tailnet IPs are permanently assigned per node, so this is stable
     #     without needing a DHCP reservation on the Windows box
@@ -24,15 +48,13 @@
       # /proc/mounts or in the output of `ps`.
       "credentials=/srv/secrets/smb-kasasagi"
 
-      # Read-only. Jellyfin writes metadata into its own config dir, never
-      # alongside the media, so it has no reason to hold write access.
+      # Read-only, and now permanently so: this is a source to pull FROM.
+      # Nothing on kodama should ever write back to the gaming PC.
       "ro"
 
-      # 🎯 THE IMPORTANT ONE. Without automount, systemd tries to mount this
-      # at boot and blocks waiting for a PC that is usually switched off —
-      # a slow boot at best, a degraded one at worst. With it, the mount
-      # happens lazily on first access and simply fails cleanly when the PC
-      # is off, which is the normal state here.
+      # Lazy mount. Without automount, systemd tries to mount this at boot and
+      # blocks waiting for a PC that is usually switched off — a slow boot at
+      # best, a degraded one at worst.
       "x-systemd.automount"
       "noauto"
 
@@ -46,8 +68,6 @@
       "nofail"
 
       # CIFS has no Unix permissions, so they are synthesised at mount time.
-      # World-readable is fine for a read-only media share and avoids having
-      # to match whatever UID the Jellyfin container runs as.
       "file_mode=0444"
       "dir_mode=0555"
 
@@ -57,42 +77,8 @@
       # SMB 3.0: encrypted and modern. SMB1 is off on Windows 11 anyway.
       "vers=3.0"
 
-      # Windows inode numbers are not stable across reconnects, which can make
-      # Jellyfin think files changed. Let the client generate them instead.
-      "noserverino"
-    ];
-  };
-
-  # A SEPARATE read-write mount to the same share, for Sonarr/Radarr's final
-  # import step (servarr.nix) — deliberately not just dropping "ro" from the
-  # mount above. Jellyfin's mount stays exactly as reasoned and untouched;
-  # this is a second, independent mount instance instead of loosening an
-  # existing guarantee.
-  fileSystems."/data/media-rw" = {
-    device = "//100.97.61.16/Media";
-    fsType = "cifs";
-
-    options = [
-      "credentials=/srv/secrets/smb-kasasagi"
-
-      "x-systemd.automount"
-      "noauto"
-      "x-systemd.idle-timeout=600"
-      "x-systemd.device-timeout=10s"
-      "x-systemd.mount-timeout=10s"
-      "nofail"
-
-      # World-writable, not scoped to one UID: Sonarr and Radarr run as
-      # different service users, and CIFS only supports one uid/gid pairing
-      # per mount (no per-file ownership mapping like a real POSIX
-      # filesystem) — same reasoning the read-only mount above already uses
-      # for world-readable, just the write-side mirror of it. Only local,
-      # trusted services on kodama ever touch this path.
-      "file_mode=0666"
-      "dir_mode=0777"
-
-      "iocharset=utf8"
-      "vers=3.0"
+      # Windows inode numbers are not stable across reconnects. Let the client
+      # generate them instead.
       "noserverino"
     ];
   };

@@ -63,7 +63,7 @@
         ./hosts/kodama/configuration.nix
         ./hosts/kodama/monitoring.nix
         ./hosts/kodama/homepage.nix
-        ./hosts/kodama/media.nix
+        ./hosts/kodama/storage.nix
         ./hosts/kodama/pihole.nix
         ./hosts/kodama/servarr.nix
         { nixpkgs.overlays = [ piOverlay ]; }

@@ -12,6 +12,19 @@
 # (100.70.107.61), which covers phone + laptop at home AND away with no firewall
 # opening. Switch the router's DHCP DNS later to cover the whole house.
 {
+  # ── Diagnostics ─────────────────────────────────────────────────────────
+  # Deliberately minimal — both earned their place during the 29 Aug 2026 DNS
+  # outage, where their absence measurably slowed the diagnosis:
+  #   dnsutils — this box IS the DNS server and had no way to query DNS.
+  #              `host` returns ambiguous output (grep "has address|not found"
+  #              matches either outcome), which produced a wrong conclusion.
+  #              Ended up hand-building DNS packets in bash instead of `dig`.
+  #   tcpdump  — needed to settle whether outbound UDP 53 was actually blocked;
+  #              without it that question was never answered definitively.
+  # Anything rarer: `nix shell nixpkgs#<tool>`, which is how cryptsetup was
+  # obtained on the night. See [[dns-incident-2026-08-29]].
+  environment.systemPackages = with pkgs; [ dnsutils tcpdump ];
+
   # ── DoH proxy to Cloudflare ─────────────────────────────────────────────
   # https-dns-proxy: a purpose-built DoH forwarder with a NixOS module.
   #
