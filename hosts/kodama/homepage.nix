@@ -44,10 +44,14 @@
         # kodama: HA link (plain) + main Prometheus card (CPU/RAM/power) +
         # disk free (3 volumes) + disk %used (3 volumes) — the local
         # resources widget was removed, so disk coverage moved here fully.
-        { "kodama" = { style = "row"; columns = 4; }; }
+        # Five cards, five columns: HA, host stats, ONE CARD PER PHYSICAL
+        # DRIVE (NVMe / SATA), then uptime. Per-drive rather than
+        # per-mountpoint since the second disk landed 2026-08-29 — a flat list
+        # of five volumes hid which spindle was actually filling up.
+        { "kodama" = { style = "row"; columns = 5; }; }
         # kasasagi: same shape as kodama — main + GPU + disk, one card each
         # (the 4-mapping cap keeps forcing a split rather than one big card).
-        { "kasasagi" = { style = "row"; columns = 3; }; }
+        { "kasasagi" = { style = "row"; columns = 4; }; }
         # The remaining 4 kodama services are uniform (icon + description
         # only), so a clean 2x2 grid with no ragged trailing row.
         { "Kodama services" = { style = "row"; columns = 2; }; }
@@ -204,7 +208,8 @@
       # /proc) was removed at Luis's request — kodama's stats are now
       # fully consolidated into the Prometheus-sourced cards below instead
       # of split across two different mechanisms (local /proc here,
-      # Prometheus there). See the "kodama" and "kodama Disk*" cards.
+      # Prometheus there). See the "kodama (Prometheus)", "kodama NVMe"
+      # and "kodama SSD" cards.
       {
         datetime = {
           text_size = "l";
@@ -277,14 +282,22 @@
             };
           }
           {
-            "kodama Disk Free" = {
+            "kodama NVMe · 256 GB" = {
               href = "http://kodama:3000";
-              description = "GiB free, all 3 volumes — replaces the top resources widget's disk tiles";
+              description = "Free space on the system drive — root / srv / data";
               icon = "mdi-harddisk";
+              # ⚠️ CARDS ARE PER PHYSICAL DRIVE, not per mountpoint. Since the
+              # 2 TB SATA disk was added on 2026-08-29 kodama has two, and a
+              # flat list of five volumes hid which spindle was filling up.
+              # This card is the PM991 NVMe only: root 55G, srv 45G, data 100G,
+              # plus ~36 GiB unallocated in the VG.
+              #
+              # Free GiB rather than percent: on a 45G volume "80% used" is a
+              # ratio, "9 GiB left" is a decision.
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22/%22%7D%20/%201024%20/%201024%20/%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22root%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22/srv%22%7D%20/%201024%20/%201024%20/%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22srv%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22/data%22%7D%20/%201024%20/%201024%20/%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22data%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2F%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22root%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fsrv%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22srv%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22data%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "/ free"; format = "float"; suffix = " GiB"; }
                   { field = "data.result.1.value.1"; label = "srv free"; format = "float"; suffix = " GiB"; }
@@ -294,21 +307,54 @@
             };
           }
           {
-            "kodama Disk %" = {
+            "kodama SSD · 2 TB LUKS" = {
               href = "http://kodama:3000";
-              description = "% used, all 3 volumes — complements the GiB-free card next to it";
-              icon = "mdi-harddisk";
-              # Split from the Free card above rather than one 6-stat
-              # card — the 4-mapping cap (customapi drops anything past
-              # the 4th, same as the homeassistant widget).
+              description = "Encrypted Samsung 860 EVO — the media library and the photo volume";
+              icon = "mdi-harddisk-plus";
+              # The second drive, added 2026-08-29: LUKS2 -> LVM vgmedia ->
+              # lv-media (800G, /data/media) + lv-photos (300G, /data/photos),
+              # with 763 GiB left unallocated on purpose.
+              #
+              # Both free AND percent here, unlike the NVMe card, because these
+              # two volumes behave differently: media grows slowly and
+              # predictably (~0.25 GB/day measured), photos is empty and will
+              # arrive in one lump. Four mappings is the hard cap — the
+              # customapi widget silently drops anything past the 4th.
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bmountpoint%3D%22/%22%7D%20/%20node_filesystem_size_bytes%7Bmountpoint%3D%22/%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22root%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bmountpoint%3D%22/srv%22%7D%20/%20node_filesystem_size_bytes%7Bmountpoint%3D%22/srv%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22srv%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bmountpoint%3D%22/data%22%7D%20/%20node_filesystem_size_bytes%7Bmountpoint%3D%22/data%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22data%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fmedia%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22mediafree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fmedia%22%7D%20%2F%20node_filesystem_size_bytes%7Bmountpoint%3D%22%2Fdata%2Fmedia%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22mediapct%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fphotos%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22photosfree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fphotos%22%7D%20%2F%20node_filesystem_size_bytes%7Bmountpoint%3D%22%2Fdata%2Fphotos%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22photospct%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
-                  { field = "data.result.0.value.1"; label = "/ used"; format = "float"; suffix = " %"; }
-                  { field = "data.result.1.value.1"; label = "srv used"; format = "float"; suffix = " %"; }
-                  { field = "data.result.2.value.1"; label = "data used"; format = "float"; suffix = " %"; }
+                  { field = "data.result.0.value.1"; label = "media free"; format = "float"; suffix = " GiB"; }
+                  { field = "data.result.1.value.1"; label = "media used"; format = "float"; suffix = " %"; }
+                  { field = "data.result.2.value.1"; label = "photos free"; format = "float"; suffix = " GiB"; }
+                  { field = "data.result.3.value.1"; label = "photos used"; format = "float"; suffix = " %"; }
+                ];
+              };
+            };
+          }
+          {
+            "kodama Uptime" = {
+              href = "http://kodama:3000";
+              description = "Days since boot — this one should climb and keep climbing";
+              icon = "mdi-timer-outline";
+              # 🎯 The single most useful number on this dashboard for kodama.
+              # Its failure mode is that it works until it restarts — the DNS
+              # outage, Jellyfin's three silent reboots and the Grafana secrets
+              # regression were all latent boot failures that ran fine for days
+              # first. An uptime that resets when you did not reboot it is the
+              # earliest warning any of those give.
+              #
+              # Days, not the widget's duration formatter: that expects
+              # milliseconds and is easy to get subtly wrong. "12.4 d" needs no
+              # formatter at all. A fresh "0 d" is correct, not broken — it
+              # means this box restarted within the last couple of hours.
+              widget = {
+                type = "customapi";
+                refreshInterval = 10000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20node_boot_time_seconds%29%20%2F%2086400%2C%200.1%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "days up"; format = "float"; suffix = " d"; }
                 ];
               };
             };
@@ -375,6 +421,30 @@
                 mappings = [
                   { field = "data.result.0.value.1"; label = "Free"; format = "float"; suffix = " GiB"; }
                   { field = "data.result.1.value.1"; label = "Used"; format = "float"; suffix = " %"; }
+                ];
+              };
+            };
+          }
+          {
+            "kasasagi Uptime" = {
+              href = "http://kodama:3000";
+              description = "Days since boot — expected to reset often, it reboots for games";
+              icon = "mdi-timer-outline";
+              # Different metric name for the same idea: windows_exporter
+              # exposes windows_system_boot_time_timestamp where node_exporter
+              # gives node_boot_time_seconds. Both are the Unix timestamp of
+              # boot, so uptime is time() minus it.
+              #
+              # Unlike kodama, a LOW number here is normal and means nothing is
+              # wrong — which is exactly why the two machines get separate
+              # cards in their own sections rather than one shared card. The
+              # same figure carries opposite meaning on each box.
+              widget = {
+                type = "customapi";
+                refreshInterval = 10000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20windows_system_boot_time_timestamp%29%20%2F%2086400%2C%200.1%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "days up"; format = "float"; suffix = " d"; }
                 ];
               };
             };

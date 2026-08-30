@@ -32,6 +32,12 @@ let
           /var/lib/dhcpcd/|/var/lib/NetworkManager/|/var/lib/logrotate/|/var/lib/chrony/) continue ;;
           /var/lib/machines/|/var/lib/portables/|/var/lib/udisks2/) continue ;;
           /var/lib/lastlog/|/var/lib/systemd-*/) continue ;;
+          # fwupd is a CACHE, not state: metadata/ is re-downloaded from the
+          # LVFS on demand, pki/ holds public signing certs shipped with the
+          # package, and pending.db only tracks an update staged for the next
+          # reboot. Nothing here is worth carrying across a reinstall, so it
+          # was noise in the report rather than a finding.
+          /var/lib/fwupd/) continue ;;
         esac
         # Ignore empty directories — a module that created a dir and wrote
         # nothing is not lost state.

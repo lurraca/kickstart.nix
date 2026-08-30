@@ -148,6 +148,14 @@
     powerOnBoot = true;
   };
 
+  # 🔴 Pairing keys are NOT regenerable. /var/lib/bluetooth holds the link keys
+  # negotiated with each paired device; lose them and every device has to be
+  # re-paired, which on a headless box in a cupboard means physically getting
+  # at it. Found by the weekly state report, which is what it exists for.
+  # (The `cache/` subdirectory under the adapter is just scan results and is
+  # disposable — it is the per-device `info` files that matter.)
+  kodama.persist = [ "bluetooth" ];
+
   # UHD 630 iGPU — QSV/VAAPI for Immich video transcoding once the library
   # moves here off the RTX 3070. See notes/homelab/homelab.md decision 10.
   hardware.graphics = {

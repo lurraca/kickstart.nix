@@ -97,7 +97,10 @@
   # fallback instead. The name must match the default stateDir — "prometheus2",
   # not "prometheus". Getting that wrong leaves the TSDB on the disposable
   # root volume while looking entirely correct in review.
-  kodama.persist = [ "prometheus2" ];
+  # alloy keeps journal read positions here. Losing them is not catastrophic —
+  # it re-reads or skips ahead — but it is a real gap in the logs across a
+  # reinstall, and the state is 24 KB, so protecting it is free.
+  kodama.persist = [ "prometheus2" "alloy" ];
 
   # ── Grafana ─────────────────────────────────────────────────────────────
   # Unlike Prometheus, dataDir takes an absolute path, so it goes straight to
@@ -194,6 +197,16 @@
   # exports node_systemd_unit_state, so this costs no new scrape config.
   environment.etc."grafana-dashboards/systemd-health.json".source =
     ./grafana/systemd-health.json;
+
+  # Storage + uptime. Organised PER PHYSICAL DRIVE rather than per mountpoint:
+  # since the encrypted 2 TB SATA disk landed on 2026-08-29 kodama has two, and
+  # a flat list of five volumes hides which spindle is actually filling up.
+  #
+  # Uptime is split into one panel per machine on purpose — the same number
+  # means opposite things. On kodama a low uptime is a warning (its failure
+  # mode is that it works until it restarts); on kasasagi it is just Tuesday.
+  environment.etc."grafana-dashboards/kodama-storage.json".source =
+    ./grafana/kodama-storage.json;
 
   # ── Loki ────────────────────────────────────────────────────────────────
   # Single-node, filesystem-backed. No object store, no external database —
