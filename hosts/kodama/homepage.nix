@@ -493,15 +493,20 @@
         "Media & photos" = [
           {
             "Immich" = {
-              href = "http://100.84.11.47:2283";
-              description = "Photos — still on the gaming PC";
+              # MIGRATED off kasasagi 2026-08-31. Library on the encrypted SATA
+              # drive at /data/photos/immich, so the Backrest `photos` plan
+              # already covers it. ML runs on the UHD 630 via OpenVINO —
+              # verified: onnxruntime reports OpenVINOExecutionProvider.
+              href = "http://kodama:2283";
+              description = "Photos — 16.4k assets, 361 people";
               icon = "immich.png";
+              siteMonitor = "http://127.0.0.1:2283/api/server/ping";
             };
           }
           {
             "Jellyfin" = {
               href = "http://kodama:8096";
-              description = "Media — media over Tailscale from kasasagi";
+              description = "Media — 347 GB local on the encrypted SATA drive";
               icon = "jellyfin.png";
               siteMonitor = "http://127.0.0.1:8096/health";
             };
