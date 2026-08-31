@@ -1,4 +1,8 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  lib,
+  ...
+}: {
   home.sessionVariables = {
     CLAUDE_CODE_DISABLE_AUTO_MEMORY = "0";
     EDITOR = "nvim";
@@ -80,7 +84,10 @@
     };
 
   shellAliases = {
-    "superclaude" = "claude --dangerously-skip-permissions";
+    # work.nix (work-mac only) overrides this with a pinned model; mkDefault
+    # keeps this the generic fallback everywhere else without an mkForce
+    # war between the two definitions.
+    "superclaude" = lib.mkDefault "claude --dangerously-skip-permissions";
     "cat" = "bat";
     "gbr" = "git branch";
     "gci" = "git commit";
