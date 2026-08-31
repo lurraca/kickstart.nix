@@ -501,6 +501,32 @@
               description = "Photos — 16.4k assets, 361 people";
               icon = "immich.png";
               siteMonitor = "http://127.0.0.1:2283/api/server/ping";
+              # Local address, not the tailnet one: kodama answering about
+              # itself never leaves the box, same as the homeassistant widget.
+              #
+              # `version = 2` is required for modern Immich. Homepage 2.0.0's
+              # immich/component.jsx does:
+              #     const { version = 1 } = widget;
+              #     statsEndpoint = version === 2 ? "statistics_v2" : "stats";
+              # so v1 hits /api/server-info/* which modern Immich 404s.
+              #
+              # ⚠️ Debugging gotcha that cost time: the credentialed proxy is
+              # addressed by ENDPOINT NAME, not by URL path. Testing it by hand
+              # needs `endpoint=statistics_v2` — `endpoint=statistics` matches
+              # no mapping and falls back to the v1 path, producing a 404 that
+              # looks exactly like a broken widget. VERIFIED WORKING:
+              #   statistics_v2 -> {"photos":16285,"videos":18,...}
+              #   version_v2    -> {"major":3,"minor":1,"patch":0}
+              #
+              # The key is a DEDICATED Immich API key named `homepage`, after
+              # its consumer — not the one used for the CLI import. Value lives
+              # only in /srv/secrets/homepage.env; THIS REPO IS PUBLIC.
+              widget = {
+                type = "immich";
+                url = "http://127.0.0.1:2283";
+                key = "{{HOMEPAGE_VAR_IMMICH_TOKEN}}";
+                version = 2;
+              };
             };
           }
           {
