@@ -8,6 +8,7 @@
     ./shared/herdr.nix
     ./darwin/packages.nix
     ./darwin/homelab-ssh.nix
+    ./darwin/aerospace.nix
     ./work.nix
   ];
 

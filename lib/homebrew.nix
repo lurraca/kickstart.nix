@@ -26,12 +26,16 @@
   homebrew.casks = [
     "1password"
     "arc"
+    # Cask (not nixpkgs) so the Accessibility grant targets the stable
+    # /Applications path instead of a versioned /nix/store path.
+    "nikitabobko/tap/aerospace"
     "claude"
     "claude-code"
     "cursor"
     "cursor-cli"
     "docker-desktop"
     "github"
+    "karabiner-elements"
     "logi-options-plus"
     "notion"
     "obs"
@@ -43,6 +47,7 @@
   ];
 
   homebrew.taps = [
+    "nikitabobko/tap"
     {
       name = "zendesk/devops";
       clone_target = "git@github.com:zendesk/homebrew-devops.git";
