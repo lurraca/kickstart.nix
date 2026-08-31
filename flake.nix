@@ -64,6 +64,9 @@
         ./hosts/kodama/monitoring.nix
         ./hosts/kodama/homepage.nix
         ./hosts/kodama/storage.nix
+        # Inert until `enabled` is flipped inside — imported so it stays
+        # type-checked rather than rotting as an unreferenced file.
+        ./hosts/kodama/tls.nix
         ./hosts/kodama/pihole.nix
         ./hosts/kodama/servarr.nix
         { nixpkgs.overlays = [ piOverlay ]; }
