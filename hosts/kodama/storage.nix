@@ -126,6 +126,21 @@
 
     "d /data/media  2775 root media - -"
     "d /data/photos 2775 root media - -"
+
+    # Immich, migrating here from kasasagi (WSL2/Docker Desktop).
+    # Two locations on purpose, each so an EXISTING Backrest plan covers it
+    # with no new backup config:
+    #   /data/photos/immich  -> the library, on the encrypted SATA drive,
+    #                           already inside the `photos` plan.
+    #   /srv/immich          -> Postgres, on the NVMe for random I/O, already
+    #                           inside the `srv` plan.
+    # Declared here rather than mkdir'd, because undeclared manual state under
+    # /srv is precisely what killed Grafana on 29 Aug — see the note above.
+    # ⚠️ A restic snapshot of a LIVE Postgres data directory is not a
+    # consistent backup; /srv/immich/dump is where a nightly pg_dumpall lands
+    # and is the copy that can actually be trusted for restore.
+    "d /srv/immich         0755 root root - -"
+    "d /srv/immich/dump    0750 root root - -"
   ];
 
   # ── Filesystems ─────────────────────────────────────────────────────────
