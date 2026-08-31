@@ -1,4 +1,11 @@
 {username}: {self, pkgs, ...}: {
+  # nix-darwin master vs nixpkgs-unstable: nixos-render-docs CLI skew breaks
+  # the HTML manual build; keep man pages, skip the HTML docs.
+  documentation.doc.enable = false;
+  # The uninstaller builds an embedded pristine darwin-system with default
+  # options (docs on), which hits the same nixos-render-docs breakage.
+  system.tools.darwin-uninstaller.enable = false;
+
   nix = {
     settings = {
       builders-use-substitutes = true;
