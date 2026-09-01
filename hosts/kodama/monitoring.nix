@@ -25,7 +25,13 @@
     enable = true;
     listenAddress = "127.0.0.1";
     port = 9100;
-    enabledCollectors = [ "systemd" ];
+    # textfile lets other units publish metrics by dropping a .prom file in a
+    # directory — used by backup-metrics in alerting.nix to expose restic
+    # snapshot freshness. It is the standard way to get "the answer to a
+    # question only a script can ask" into Prometheus without writing an
+    # exporter.
+    enabledCollectors = [ "systemd" "textfile" ];
+    extraFlags = [ "--collector.textfile.directory=/var/lib/node-exporter/textfile" ];
   };
 
   # ── Prometheus ──────────────────────────────────────────────────────────

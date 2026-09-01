@@ -62,6 +62,7 @@
         ./hosts/kodama/persistence.nix
         ./hosts/kodama/configuration.nix
         ./hosts/kodama/monitoring.nix
+        ./hosts/kodama/alerting.nix
         ./hosts/kodama/homepage.nix
         ./hosts/kodama/storage.nix
         # Inert until `enabled` is flipped inside — imported so it stays
