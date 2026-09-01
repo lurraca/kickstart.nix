@@ -42,7 +42,9 @@
       User = "root";
     };
 
-    path = [ pkgs.restic pkgs.jq pkgs.coreutils ];
+    # ⚠️ systemd units get an almost-empty PATH. Every binary the script calls
+    # must be listed — awk being absent cost a deploy cycle.
+    path = [ pkgs.restic pkgs.jq pkgs.coreutils pkgs.gawk ];
 
     script = ''
       set -uo pipefail
@@ -55,26 +57,49 @@
         echo "# TYPE backup_last_snapshot_timestamp_seconds gauge"
         echo "# HELP backup_query_success Whether the restic query itself succeeded (1) or failed (0)."
         echo "# TYPE backup_query_success gauge"
+        echo "# HELP backup_metrics_written_timestamp_seconds Unix time this file was last written."
+        echo "# TYPE backup_metrics_written_timestamp_seconds gauge"
       } > "$tmp"
 
-      # A single restic call; grouped per plan tag in jq rather than one call
-      # per plan, because each call pays the full repository-open cost.
+      # One restic call — each one pays the full repository-open cost, and it is
+      # billed as R2 Class B operations.
       if snapshots=$(restic snapshots --json 2>/dev/null); then
-        echo "backup_query_success 1" >> "$tmp"
-        echo "$snapshots" | jq -r '
-          map(select(.tags != null))
-          | map(. as $s | ($s.tags[] | select(startswith("plan:"))) as $t
-                | { plan: ($t | ltrimstr("plan:")), t: ($s.time | sub("\\.[0-9]+"; "") | fromdateiso8601) })
-          | group_by(.plan)
-          | map({ plan: .[0].plan, newest: (map(.t) | max) })
-          | .[]
-          | "backup_last_snapshot_timestamp_seconds{plan=\"\(.plan)\"} \(.newest)"
-        ' >> "$tmp" || echo "backup_query_success 0" >> "$tmp"
+        ok=1
       else
-        # Repo unreachable, credentials wrong, R2 down. Emit the failure flag so
-        # the condition is VISIBLE rather than showing up as a stale timestamp.
-        echo "backup_query_success 0" >> "$tmp"
+        # Repo unreachable, credentials rejected, repo damaged. Emitting the
+        # flag makes the condition VISIBLE rather than letting it masquerade as
+        # a merely stale timestamp.
+        ok=0
       fi
+
+      if [ "$ok" = 1 ]; then
+        # ⚠️ restic emits RFC3339 WITH A NUMERIC OFFSET, e.g.
+        #   2026-09-01T02:00:02.131405548+01:00
+        # jq's fromdateiso8601 accepts only a "Z" suffix and fails on offsets,
+        # so parsing is handed to date(1), which understands both. An earlier
+        # version did this in jq, silently produced no series at all, and left
+        # a contradictory success flag behind. Measured, not assumed.
+        printf '%s' "$snapshots" \
+          | jq -r '.[] | select(.tags != null)
+                   | (.tags[] | select(startswith("plan:"))) as $t
+                   | "\($t | ltrimstr("plan:"))\t\(.time)"' \
+          | while IFS="$(printf '\t')" read -r plan ts; do
+              epoch=$(date -d "$ts" +%s 2>/dev/null) || continue
+              printf '%s %s\n' "$plan" "$epoch"
+            done \
+          | awk '{ if ($2 > m[$1]) m[$1] = $2 }
+                 END { for (p in m)
+                         printf "backup_last_snapshot_timestamp_seconds{plan=\"%s\"} %d\n", p, m[p] }' \
+          >> "$tmp"
+      fi
+
+      # Exactly once, whichever branch ran.
+      echo "backup_query_success $ok" >> "$tmp"
+
+      # Lets a FROZEN collector be told apart from a genuinely stale backup —
+      # without this, a timer that dies leaves a correct-looking file behind and
+      # the resulting alert would blame the backup.
+      echo "backup_metrics_written_timestamp_seconds $(date +%s)" >> "$tmp"
 
       # Atomic rename: node_exporter must never read a half-written file.
       mv "$tmp" "$dir/backup.prom"
@@ -121,6 +146,19 @@
             annotations = {
               summary = "Backup freshness metric has disappeared";
               description = "No backup_last_snapshot_timestamp_seconds series. The timer, node_exporter's textfile collector, or the restic query has broken — backups are UNVERIFIED, not necessarily failing.";
+            };
+          }
+          {
+            # Distinguishes "the collector froze" from "the backup is stale".
+            # A dead timer leaves a valid-looking file on disk, so BackupStale
+            # would fire and blame the wrong thing.
+            alert = "BackupMetricsCollectorStale";
+            expr = ''time() - backup_metrics_written_timestamp_seconds > 3 * 3600'';
+            for = "30m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "Backup metrics collector has stopped updating";
+              description = "backup-metrics.timer last wrote {{ $value | humanizeDuration }} ago (runs hourly). Backup state shown by other alerts may be stale.";
             };
           }
           {
