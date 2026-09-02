@@ -290,6 +290,35 @@
             };
           }
         ];
+      }
+      {
+        name = "system";
+        rules = [
+          {
+            # The broad safety net: catches things nobody wrote a specific rule
+            # for — a mount failing, an exporter dying, a timer erroring. Costs
+            # nothing new: --collector.systemd has exported
+            # node_systemd_unit_state since 18 Aug and 190 units are tracked.
+            #
+            # ⚠️ Lower signal than ServiceDown by design. This will occasionally
+            # fire for a oneshot that failed legitimately — backup-metrics did
+            # exactly that three times while being debugged on 1 Sep. The 10m
+            # window lets a unit its timer retries clear itself first.
+            #
+            # ⚠️ It will NOT catch watchdog-beat failing: that unit ends in
+            # `|| true` on purpose, so a transient network blip does not turn it
+            # red. The external Worker catches that instead — correct division,
+            # but worth remembering when this stays quiet.
+            alert = "SystemdUnitFailed";
+            expr = ''node_systemd_unit_state{state="failed"} == 1'';
+            for = "10m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.name }} has failed";
+              description = "systemd unit {{ $labels.name }} has been in failed state for 10 minutes on kodama.";
+            };
+          }
+        ];
       }];
     })
   ];
