@@ -8,8 +8,11 @@
 # 🔴 The bug that justified this: on 31 Aug the Backrest `photos` plan was found
 # to have NEVER run. It pointed at a path that does not exist inside the
 # container, and a disabled schedule meant it never executed and so never
-# errored. Thirteen days with no photo backup, and nothing said a word —
-# because a plan that never runs never fails.
+# errored — nothing said a word, because a plan that never runs never fails.
+#
+# 📏 The actual exposure was ~3 HOURS, not the "13 days" an early draft of that
+# note claimed and which has been repeated since. The window is not the point:
+# the detection failure is.
 #
 # 🎯 Hence the design rule throughout this file: ALERT ON SILENCE, not just on
 # errors. Every rule that watches a metric has a partner rule that fires when
