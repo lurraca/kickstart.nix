@@ -20,6 +20,22 @@
   # MAC, so the address is stable without hard-coding it in two places.
   networking.useDHCP = lib.mkDefault true;
 
+  # Wake-on-LAN. The BIOS setting is already on and the NIC already reports
+  # `Wake-on: g`, but that is the driver's default rather than anything asked
+  # for — a driver update or a config change could silently drop it, and the
+  # failure would only show up the one time it is needed. Declaring it makes
+  # the arming durable and visible.
+  #
+  # ⚠️ LAN-only by nature: a magic packet is a broadcast and does not route, so
+  # this works from the phone on home WiFi and NOT over Tailscale. For remote
+  # power-on, AMT on :16992 is the answer and already works with the machine
+  # fully powered off.
+  #
+  # ⚠️ Home Assistant cannot be the sender for THIS machine — HA runs on kodama,
+  # so it is off whenever the packet would be needed. (It is the right tool for
+  # waking kasasagi, which is a different problem.)
+  networking.interfaces.eno2.wakeOnLan.enable = true;
+
   networking.firewall = {
     enable = true;
 
