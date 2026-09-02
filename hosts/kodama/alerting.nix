@@ -119,6 +119,82 @@
     };
   };
 
+  # ── Service liveness probes ─────────────────────────────────────────────
+  # blackbox_exporter asks each service the question a user would: "does it
+  # answer?" That is deliberately different from node_exporter's systemd
+  # collector, which cannot see the Docker containers most of these run in.
+  #
+  # 🎯 Pi-hole is probed with a REAL DNS QUERY, not its web UI. The admin page
+  # answering proves pihole-FTL's HTTP thread is alive; it does not prove DNS
+  # resolution works — and DNS is the thing every device in the house depends
+  # on. Probe what actually matters, not what is easiest to reach.
+  services.prometheus.exporters.blackbox = {
+    enable = true;
+    listenAddress = "127.0.0.1";
+    port = 9115;
+    configFile = pkgs.writeText "blackbox.yml" (builtins.toJSON {
+      modules = {
+        # ⚠️ Liveness, not correctness. Jellyfin answers 302, Backrest 401
+        # (it is behind auth) — both mean "the service is up and talking".
+        # Restricting to 2xx would alert on a healthy Backrest forever.
+        http_alive = {
+          prober = "http";
+          timeout = "10s";
+          http = {
+            valid_status_codes = [ 200 301 302 401 403 ];
+            preferred_ip_protocol = "ip4";
+          };
+        };
+        dns_resolves = {
+          prober = "dns";
+          timeout = "5s";
+          dns = {
+            # A name that must always resolve. If Pi-hole cannot answer this,
+            # the house has no working DNS.
+            query_name = "cloudflare.com";
+            query_type = "A";
+            preferred_ip_protocol = "ip4";
+            validate_answer_rrs.fail_if_not_matches_regexp = [ ".*" ];
+          };
+        };
+      };
+    });
+  };
+
+  services.prometheus.scrapeConfigs = [
+    {
+      job_name = "blackbox-http";
+      metrics_path = "/probe";
+      params.module = [ "http_alive" ];
+      static_configs = [{
+        targets = [
+          "http://127.0.0.1:2283"  # Immich
+          "http://127.0.0.1:8096"  # Jellyfin
+          "http://127.0.0.1:8123"  # Home Assistant
+          "http://127.0.0.1:3000"  # Grafana
+          "http://127.0.0.1:9898"  # Backrest
+          "http://127.0.0.1:8081"  # Pi-hole admin
+        ];
+      }];
+      relabel_configs = [
+        { source_labels = [ "__address__" ]; target_label = "__param_target"; }
+        { source_labels = [ "__param_target" ]; target_label = "instance"; }
+        { target_label = "__address__"; replacement = "127.0.0.1:9115"; }
+      ];
+    }
+    {
+      job_name = "blackbox-dns";
+      metrics_path = "/probe";
+      params.module = [ "dns_resolves" ];
+      static_configs = [{ targets = [ "127.0.0.1:53" ]; }];
+      relabel_configs = [
+        { source_labels = [ "__address__" ]; target_label = "__param_target"; }
+        { source_labels = [ "__param_target" ]; target_label = "instance"; }
+        { target_label = "__address__"; replacement = "127.0.0.1:9115"; }
+      ];
+    }
+  ];
+
   # ── Alert rules ─────────────────────────────────────────────────────────
   services.prometheus.rules = [
     (builtins.toJSON {
@@ -172,9 +248,94 @@
             };
           }
         ];
+      }
+      {
+        name = "services";
+        rules = [
+          {
+            alert = "ServiceDown";
+            expr = ''probe_success{job="blackbox-http"} == 0'';
+            # 5m, not 1m: a container restart during a deploy is not an outage,
+            # and an alert that fires every time you touch something is one you
+            # stop reading.
+            for = "5m";
+            labels.severity = "critical";
+            annotations = {
+              summary = "{{ $labels.instance }} is not responding";
+              description = "HTTP probe to {{ $labels.instance }} has failed for 5 minutes.";
+            };
+          }
+          {
+            # 🔴 The one that takes the whole house down. Every device resolves
+            # through Pi-hole, including phones on cellular via the tailnet.
+            alert = "DNSResolutionDown";
+            expr = ''probe_success{job="blackbox-dns"} == 0'';
+            for = "2m";
+            labels.severity = "critical";
+            annotations = {
+              summary = "Pi-hole is not resolving DNS";
+              description = "A DNS query for cloudflare.com against 127.0.0.1:53 has failed for 2 minutes. Every device in the house resolves through here.";
+            };
+          }
+          {
+            # Catches the probes themselves breaking — same alert-on-silence
+            # rule as the backup metrics.
+            alert = "ProbesMissing";
+            expr = ''absent(probe_success{job="blackbox-http"})'';
+            for = "15m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "Service probes have disappeared";
+              description = "No probe_success series. blackbox_exporter or its scrape is broken, so service health is UNKNOWN rather than good.";
+            };
+          }
+        ];
       }];
     })
   ];
+
+  # ── External dead-man's-switch heartbeat ────────────────────────────────
+  # 🔴 Everything above runs ON kodama — Prometheus, Alertmanager, and the Home
+  # Assistant instance that delivers the push. So the one failure none of it can
+  # report is kodama being dead. A silent machine sends no alerts, and silence
+  # is indistinguishable from "all fine".
+  #
+  # This posts a heartbeat to a Cloudflare Worker (homelab/watchdog). The Worker
+  # holds the timestamp in KV and a cron there — running on Cloudflare, not
+  # here — shouts at ntfy.sh when the beats stop.
+  #
+  # ⚠️ The Worker CANNOT probe kodama: Workers have no route to the tailnet.
+  # Heartbeat-only is the correct pattern anyway — a probe would require exposing
+  # something publicly, which is what was just closed off with the Jellyfin
+  # Funnel.
+  #
+  # The URL carries the shared token, so it lives in /srv/secrets like the rest.
+  systemd.services.watchdog-beat = {
+    description = "Send a heartbeat to the external watchdog";
+    serviceConfig = {
+      Type = "oneshot";
+      EnvironmentFile = "/srv/secrets/watchdog-beat.env"; # defines BEAT_URL
+    };
+    path = [ pkgs.curl ];
+    # --max-time so a hanging request cannot pile up timers, and failure is
+    # deliberately NOT fatal: a missed beat is the Worker's problem to notice,
+    # and a unit that goes red on every transient network blip is noise.
+    script = ''
+      curl -fsS --max-time 20 "$BEAT_URL" >/dev/null || true
+    '';
+  };
+
+  systemd.timers.watchdog-beat = {
+    description = "Heartbeat to the external watchdog";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "2m";
+      # Every 15 min against the Worker's 45-minute staleness threshold: three
+      # missed beats before it shouts, so a single blip stays quiet.
+      OnUnitActiveSec = "15m";
+      Persistent = true;
+    };
+  };
 
   # ── Alertmanager ────────────────────────────────────────────────────────
   # Channel decided in monitoring.md §7: Alertmanager → HA webhook →
