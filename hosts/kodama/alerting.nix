@@ -295,6 +295,105 @@
         ];
       }
       {
+        name = "disks";
+        # 🎯 ABSOLUTE thresholds, not percentages, and one per volume.
+        # A percentage is wrong at both ends here: 5% of / was 2.7 GB (a hole
+        # you cannot dig out of, since a nixos-rebuild needs GBs to build),
+        # while 5% of /data/photos is 34 GB (days of headroom). Same rule,
+        # opposite meanings. Each number below is sized to what the volume
+        # needs in order to keep working.
+        #
+        # ⚠️ Bind mounts are excluded by listing mountpoints explicitly.
+        # /var/lib/{bluetooth,pihole,prometheus2,tailscale} all report /srv's
+        # free space, and /nix/store reports /'s — a naive rule alerts five
+        # times for one filesystem.
+        rules = [
+          {
+            alert = "DiskSpaceLow";
+            expr = ''
+              (node_filesystem_avail_bytes{mountpoint="/"} < 8e9)
+              or (node_filesystem_avail_bytes{mountpoint="/boot"} < 500e6)
+              or (node_filesystem_avail_bytes{mountpoint="/srv"} < 8e9)
+              or (node_filesystem_avail_bytes{mountpoint="/data"} < 15e9)
+              or (node_filesystem_avail_bytes{mountpoint="/data/media"} < 60e9)
+              or (node_filesystem_avail_bytes{mountpoint="/data/photos"} < 60e9)
+            '';
+            for = "30m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.mountpoint }} is running low";
+              description = "{{ $labels.mountpoint }} has {{ $value | humanize1024 }}B free.";
+            };
+          }
+          {
+            alert = "DiskSpaceCritical";
+            expr = ''
+              (node_filesystem_avail_bytes{mountpoint="/"} < 4e9)
+              or (node_filesystem_avail_bytes{mountpoint="/boot"} < 200e6)
+              or (node_filesystem_avail_bytes{mountpoint="/srv"} < 4e9)
+              or (node_filesystem_avail_bytes{mountpoint="/data"} < 8e9)
+              or (node_filesystem_avail_bytes{mountpoint="/data/media"} < 30e9)
+              or (node_filesystem_avail_bytes{mountpoint="/data/photos"} < 30e9)
+            '';
+            for = "10m";
+            labels.severity = "critical";
+            annotations = {
+              summary = "{{ $labels.mountpoint }} is CRITICALLY low";
+              description = "{{ $labels.mountpoint }} has {{ $value | humanize1024 }}B free.";
+            };
+          }
+          {
+            # 🎯 Catches a runaway fill on a large volume LONG before any
+            # threshold would. During the 1 Sep Takeout import /data/photos
+            # dropped ~200 GB in an hour while still showing "plenty free" —
+            # a level-based rule says nothing until it is nearly too late.
+            alert = "DiskFillingFast";
+            expr = ''
+              predict_linear(node_filesystem_avail_bytes{mountpoint=~"/|/srv|/data|/data/media|/data/photos"}[6h], 24*3600) < 0
+            '';
+            for = "1h";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.mountpoint }} will be full within 24h";
+              description = "At the last 6 hours' rate, {{ $labels.mountpoint }} runs out inside a day. Currently {{ $value | humanize1024 }}B.";
+            };
+          }
+          {
+            # kasasagi. C: ONLY — HarddiskVolume1/4 are the EFI and recovery
+            # partitions, permanently at ~0.1 GB free by design, and would
+            # alert forever.
+            #
+            # ⚠️ Deliberately NO absent() partner here. kasasagi is a desktop
+            # that SHOULD be switched off (its 115 W floor is ~€357/yr), and
+            # powering it down makes the series vanish. No data must mean no
+            # alert, or turning it off pages you every time. C: hit 100% during
+            # the Takeout, which is what this is for.
+            alert = "KasasagiDiskLow";
+            # 100 GB on a 931 GB disk. Deliberately generous: C: hit 100%
+            # during the Takeout and the useful property is REACTION TIME, not
+            # a tight fit. A single Takeout part is ~49 GB, so 100 GB is "you
+            # can still do the thing you were about to do".
+            expr = ''windows_logical_disk_free_bytes{volume="C:"} < 100e9'';
+            for = "30m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "kasasagi C: is running low";
+              description = "C: has {{ $value | humanize1024 }}B free.";
+            };
+          }
+          {
+            alert = "KasasagiDiskCritical";
+            expr = ''windows_logical_disk_free_bytes{volume="C:"} < 50e9'';
+            for = "10m";
+            labels.severity = "critical";
+            annotations = {
+              summary = "kasasagi C: is CRITICALLY low";
+              description = "C: has {{ $value | humanize1024 }}B free. Windows misbehaves below ~10% — pagefile growth and updates start failing.";
+            };
+          }
+        ];
+      }
+      {
         name = "system";
         rules = [
           {
