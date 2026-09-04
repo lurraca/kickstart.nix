@@ -49,6 +49,12 @@
     # Mirrors the `hms` alias on the WSL box, but for a whole NixOS system.
     "nrs" = "sudo nixos-rebuild switch --flake ~/nix-config#kodama";
     "nrb" = "sudo nixos-rebuild boot --flake ~/nix-config#kodama";
+
+    # Resume the last pi conversation rather than starting cold. `ta` restores
+    # the tmux session but not the agent's context, and after a reboot that is
+    # the whole point — the phone workflow is `ssh kodama` -> `ta` -> `p`.
+    # Plain `pi` is still there for a genuinely fresh session.
+    "p" = "pi -c";
   };
 
   programs.zsh.initContent = ''
