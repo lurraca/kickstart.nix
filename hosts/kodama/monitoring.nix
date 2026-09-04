@@ -51,7 +51,16 @@
     # syntax-only keeps the config validated without asserting build-host
     # filesystem state. Any config using a secrets file will hit this.
     checkConfig = "syntax-only";
-    listenAddress = "127.0.0.1"; # Grafana is local; nothing else needs it
+    # Was 127.0.0.1 with the note "Grafana is local; nothing else needs it" —
+    # but the Homepage tile links http://kodama:9090, and the summary comment
+    # at the bottom of this file already claims :9090 is "reachable over
+    # tailscale0 ONLY". Both were written against the intent; the loopback
+    # bind meant the link was dead from every client, LAN and tailnet alike.
+    # Bind all interfaces and let the firewall do the gating, exactly as
+    # Grafana on :3000 already does — 9090 is not in allowedTCPPorts, and
+    # trustedInterfaces = [ "tailscale0" ] is what actually grants access.
+    # (node_exporter on :9100 stays on loopback: nothing off-box scrapes it.)
+    listenAddress = "0.0.0.0";
     retentionTime = "365d";
 
     globalConfig.scrape_interval = "30s";
