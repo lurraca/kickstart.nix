@@ -83,7 +83,16 @@
         # kasasagi, the gaming PC — not always-on, so this target reads "down"
         # in Prometheus whenever it's off. That's expected, not a fault.
         job_name = "windows-exporter";
-        static_configs = [{ targets = [ "192.168.1.13:9182" ]; }];
+        # 🔴 TAILNET address, not the LAN one. kasasagi has no DHCP reservation
+        # (kodama does) and drifted 192.168.1.13 -> 192.168.1.4 on its own, which
+        # silently killed both these scrapes: the exporters stayed up, Prometheus
+        # just kept knocking on the old door, and the Homepage stats went blank
+        # with no error anywhere. A tailnet IP is fixed for the life of the node.
+        #
+        # The MagicDNS name would be better still, but kodama resolves through
+        # Pi-hole, which does not forward .ts.net to 100.100.100.100 — and DNS on
+        # this box is not somewhere to experiment casually.
+        static_configs = [{ targets = [ "100.97.61.16:9182" ]; }];
       }
       {
         # nvidia_gpu_exporter, native Windows service on kasasagi via NSSM
@@ -92,7 +101,7 @@
         # have needed WSL mirrored networking just to reach the LAN; native
         # avoids both, nvidia-smi.exe already works on the Windows host).
         job_name = "nvidia-gpu-exporter";
-        static_configs = [{ targets = [ "192.168.1.13:9835" ]; }];
+        static_configs = [{ targets = [ "100.97.61.16:9835" ]; }];
       }
     ];
   };

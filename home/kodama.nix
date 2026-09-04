@@ -27,6 +27,20 @@
     dua        # disk usage — the failure mode on a media box is a full disk
     rsync      # library moves to and from the external drive
     glow
+
+    # Agentic CLI, run on the box itself rather than driven over SSH from
+    # kasasagi. The point is phone access: ssh in from anywhere on the tailnet,
+    # `ta` into the persistent tmux session, and pick up whatever was running.
+    # tmux comes from ./shared/tmux.nix and the `ta` alias from ./shared/shell.nix,
+    # so the session survives the connection dropping — which it will, from a phone.
+    #
+    # `pi` (pi.dev) rather than claude-code: minimal harness, four tools
+    # (read/write/edit/bash), behaviour left to skills and extensions.
+    # Packaged in nixpkgs, so no npm and no nix-ld wrapper. Binary is `pi`.
+    #
+    # ⚠️ BYO model — needs an API key in ~/.secrets/env (sourced by zsh below),
+    # which is pay-per-token, unlike a flat Claude subscription.
+    pi-coding-agent
   ];
 
   home.sessionPath = [ "$HOME/.local/bin" ];

@@ -384,7 +384,7 @@
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28windows_cpu_time_total%7Binstance%3D%22192.168.1.13%3A9182%22%2Cmode%3D%22idle%22%7D%5B5m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20windows_memory_physical_free_bytes%7Binstance%3D%22192.168.1.13%3A9182%22%7D%20/%20windows_memory_physical_total_bytes%7Binstance%3D%22192.168.1.13%3A9182%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28hass_sensor_power_w%7Bentity%3D%22sensor.kasasagi_current_power%22%7D%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28windows_cpu_time_total%7Binstance%3D%22100.97.61.16%3A9182%22%2Cmode%3D%22idle%22%7D%5B5m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20windows_memory_physical_free_bytes%7Binstance%3D%22100.97.61.16%3A9182%22%7D%20/%20windows_memory_physical_total_bytes%7Binstance%3D%22100.97.61.16%3A9182%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28hass_sensor_power_w%7Bentity%3D%22sensor.kasasagi_current_power%22%7D%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "CPU"; format = "float"; suffix = " %"; }
                   { field = "data.result.1.value.1"; label = "RAM"; format = "float"; suffix = " %"; }
@@ -401,7 +401,7 @@
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28nvidia_smi_utilization_gpu_ratio%7Binstance%3D%22192.168.1.13%3A9835%22%7D%20%2A%20100%2C%200.1%29%2C%20%22metric%22%2C%20%22gpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28nvidia_smi_temperature_gpu%7Binstance%3D%22192.168.1.13%3A9835%22%7D%2C%200.1%29%2C%20%22metric%22%2C%20%22temp%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28nvidia_smi_utilization_gpu_ratio%7Binstance%3D%22100.97.61.16%3A9835%22%7D%20%2A%20100%2C%200.1%29%2C%20%22metric%22%2C%20%22gpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28nvidia_smi_temperature_gpu%7Binstance%3D%22100.97.61.16%3A9835%22%7D%2C%200.1%29%2C%20%22metric%22%2C%20%22temp%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "GPU"; format = "float"; suffix = " %"; }
                   { field = "data.result.1.value.1"; label = "GPU temp"; format = "float"; suffix = " °C"; }
@@ -417,7 +417,7 @@
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28windows_logical_disk_free_bytes%7Binstance%3D%22192.168.1.13%3A9182%22%2Cvolume%3D%22C%3A%22%7D%20/%201024%20/%201024%20/%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22free%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20windows_logical_disk_free_bytes%7Binstance%3D%22192.168.1.13%3A9182%22%2Cvolume%3D%22C%3A%22%7D%20/%20windows_logical_disk_size_bytes%7Binstance%3D%22192.168.1.13%3A9182%22%2Cvolume%3D%22C%3A%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22used%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28windows_logical_disk_free_bytes%7Binstance%3D%22100.97.61.16%3A9182%22%2Cvolume%3D%22C%3A%22%7D%20/%201024%20/%201024%20/%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22free%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20windows_logical_disk_free_bytes%7Binstance%3D%22100.97.61.16%3A9182%22%2Cvolume%3D%22C%3A%22%7D%20/%20windows_logical_disk_size_bytes%7Binstance%3D%22100.97.61.16%3A9182%22%2Cvolume%3D%22C%3A%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22used%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "Free"; format = "float"; suffix = " GiB"; }
                   { field = "data.result.1.value.1"; label = "Used"; format = "float"; suffix = " %"; }
@@ -535,6 +535,22 @@
               description = "Media — 347 GB local on the encrypted SATA drive";
               icon = "jellyfin.png";
               siteMonitor = "http://127.0.0.1:8096/health";
+            };
+          }
+          {
+            # SearXNG — self-hosted metasearch. Exists because the pi coding
+            # agent had no web access at all: it answered a mobile-plan
+            # comparison entirely from training data, which is guessing.
+            #
+            # Chosen over the canonical brave-search skill because that needs a
+            # new account AND a card on file. This needs neither, and the JSON
+            # API (?format=json) makes the agent skill a curl rather than a
+            # browser.
+            "SearXNG" = {
+              href = "http://kodama:8888";
+              description = "Metasearch — no account, no key. Feeds the pi agent's websearch skill";
+              icon = "searxng.png";
+              siteMonitor = "http://127.0.0.1:8888/";
             };
           }
         ];
