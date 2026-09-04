@@ -121,6 +121,35 @@
     autoPrune.dates = "weekly";
   };
 
+  # docker.service and tailscaled.service have no ordering relationship by
+  # default, but searxng binds the tailnet IP explicitly (127.0.0.1:8888 +
+  # 100.70.107.61:8888 — see /srv/compose/searxng/docker-compose.yml). If
+  # dockerd starts containers before tailscaled has configured tailscale0,
+  # that bind fails and the container restart-loops until the IP appears.
+  # Order docker after tailscaled and wait for the IP explicitly — bounded
+  # and non-fatal: a broken tailscaled delays dockerd by at most 30s instead
+  # of blocking boot, and the containers' unless-stopped policy covers the
+  # remainder. If tailscaled is ever removed from this host, remove this too,
+  # or every boot gains a pointless 30s stall.
+  systemd.services.docker = {
+    after = [ "tailscaled.service" ];
+    wants = [ "tailscaled.service" ];
+    serviceConfig.ExecStartPre = [
+      (pkgs.writeShellScript "docker-wait-for-tailnet-ip" ''
+        n=0
+        until ${pkgs.iproute2}/bin/ip -4 addr show tailscale0 2>/dev/null |
+              ${pkgs.gnugrep}/bin/grep -qF '100.70.107.61'; do
+          n=$((n + 1))
+          if [ "$n" -ge 60 ]; then
+            echo "docker: tailnet IP not up after 30s; starting anyway" >&2
+            exit 0
+          fi
+          ${pkgs.coreutils}/bin/sleep 0.5
+        done
+      '')
+    ];
+  };
+
   # ── Always-on behaviour ─────────────────────────────────────────────────
   # A server that suspends is not a server. AMT can power it back on, but
   # every service would still have been down in the meantime.
