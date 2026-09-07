@@ -238,6 +238,27 @@
       # (10.200.200.2) — which is how the host (and Sonarr/Radarr) actually
       # reach it, per the veth setup above.
       Preferences.WebUI.Address = "*";
+
+      # 🔴 Skip WebUI auth for the host end of the veth pair.
+      #
+      # Why this exists: qBittorrent had NO password set, so on every start it
+      # generated a random temporary one and logged it. This file is installed
+      # over /srv/qbittorrent/.../qBittorrent.conf by ExecStartPre on EVERY
+      # start, so a password set through the WebUI is wiped on the next
+      # restart. Sonarr's stored credentials went stale on 4 Sep 2026 when
+      # qbittorrent last restarted, and every download silently stopped with
+      # `downloadClientUnavailable` until 7 Sep.
+      #
+      # LocalHostAuth is NOT the fix: the WebUI is reached through
+      # `qbittorrent-webui-proxy` (socat 8080 -> 10.200.200.2:8080), so
+      # qBittorrent sees the connection arriving from the host end of the
+      # veth, 10.200.200.1 — never from 127.0.0.1.
+      #
+      # /32, not the /24: the only legitimate client is the socat hop. The
+      # WebUI is not otherwise reachable — it binds inside the namespace and
+      # the host port is the only door.
+      Preferences.WebUI.AuthSubnetWhitelistEnabled = true;
+      Preferences.WebUI.AuthSubnetWhitelist = "10.200.200.1/32";
     };
   };
 
