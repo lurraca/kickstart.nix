@@ -308,6 +308,23 @@
     };
   };
 
+  # 🔴 Let the namespace reach BACK to three host services.
+  #
+  # The veth is not symmetric by default. The host connecting OUT to
+  # 10.200.200.2 always worked — that is how Sonarr reaches qBittorrent. The
+  # reverse is dropped, because trustedInterfaces is [ "tailscale0" ] and
+  # veth-host is not on it. Moving Prowlarr into the namespace made that matter
+  # for the first time: it has to reach Sonarr, Radarr and FlareSolverr, and all
+  # three answer on the host.
+  #
+  # Scoped to the three ports rather than trusting the interface: everything in
+  # the namespace is torrent-facing, and a blanket trust would hand any process
+  # in there the whole host firewall surface.
+  networking.firewall.extraCommands = ''
+    iptables -A nixos-fw -i veth-host -s 10.200.200.2/32 -p tcp \
+      -m multiport --dports 8989,7878,8191 -j nixos-fw-accept
+  '';
+
   # ── Prowlarr inside the VPN namespace ────────────────────────────────────
   #
   # 🔴 Why this exists: until 7 Sep 2026 ONLY qBittorrent was in the namespace.
