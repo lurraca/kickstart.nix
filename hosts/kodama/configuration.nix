@@ -82,7 +82,24 @@
     checkReversePath = "loose"; # required for Tailscale exit-node/subnet use
   };
 
-  services.tailscale.enable = true;
+  services.tailscale = {
+    enable = true;
+    # Tailscale SSH: the tailnet authenticates the connection, so a phone or a
+    # new laptop needs no key on the box. Added 7 Sep 2026 alongside the
+    # Termius key rather than instead of it.
+    #
+    # ⚠️ This does NOT bypass sshd — tailscaled intercepts port 22 for tailnet
+    # peers and terminates SSH itself. Whether anyone can actually connect is
+    # decided by the tailnet ACL policy in the admin console, NOT by this
+    # option and not by authorized_keys. `--ssh` with no matching ACL rule
+    # simply does nothing.
+    #
+    # 🔴 Consider what it grants: security.sudo.wheelNeedsPassword = false
+    # below means a tailnet identity permitted to SSH as kasasagi has
+    # passwordless root on the box holding the photo library, the backups and
+    # the alarm integration. Keep the ACL narrow.
+    extraUpFlags = [ "--ssh" ];
+  };
 
   # ── Remote access ───────────────────────────────────────────────────────
   services.openssh = {
@@ -104,6 +121,12 @@
     shell = pkgs.zsh;
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILQ8dCAsB8WDDR9lqR99WHzSgCbTOZJoPD1g5Jf12CIP kasasagi@wsl"
+      # Termius on the phone, added 7 Sep 2026. Kept as a key even though
+      # Tailscale SSH is enabled below: the key still works if the tailnet
+      # policy is ever wrong, and locking phone access to Tailscale SSH alone
+      # means an ACL mistake locks you out of the box that hosts the alarm,
+      # the photos and the backups.
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN6ZiYvYEvnM750GwQFryWMDOP9rI/kEG//pRugvsTXN termius@phone"
     ];
   };
   programs.zsh.enable = true;
