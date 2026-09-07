@@ -308,6 +308,51 @@
     };
   };
 
+  # ── Prowlarr inside the VPN namespace ────────────────────────────────────
+  #
+  # 🔴 Why this exists: until 7 Sep 2026 ONLY qBittorrent was in the namespace.
+  # The transfers were tunnelled and every indexer SEARCH went out over the bare
+  # home connection — Prowlarr queried each indexer, by name, from kodama's own
+  # IP. That is the half of the traffic that names what you are looking for, and
+  # it was the unencrypted half. Found while diagnosing a 1337x failure that
+  # turned out to be Cloudflare error 1006 ("the site has banned this IP"), which
+  # FlareSolverr cannot fix because it is an IP ban, not a challenge.
+  #
+  # Same killswitch shape as qbittorrent above: bindsTo means Prowlarr stops if
+  # the tunnel stops, and the namespace itself prevents a leak if the interface
+  # dies without systemd noticing.
+  systemd.services.prowlarr = {
+    after = [ "wireguard-wg-vpn.service" ];
+    bindsTo = [ "wireguard-wg-vpn.service" ];
+    serviceConfig = {
+      NetworkNamespacePath = "/run/netns/wg-vpn";
+      # As for qbittorrent: NetworkNamespacePath joins the network namespace
+      # only, so /etc/netns/<name>/resolv.conf is not substituted automatically.
+      BindReadOnlyPaths = [ "/etc/netns/wg-vpn/resolv.conf:/etc/resolv.conf" ];
+    };
+  };
+
+  # Sonarr and Radarr stay on the host network and reach their indexers at
+  # http://localhost:9696/<n>/ — URLs Prowlarr itself wrote into them. This
+  # forward keeps those URLs correct now that Prowlarr listens inside the
+  # namespace, and keeps the web UI reachable as kodama:9696 over Tailscale.
+  #
+  # ⚠️ The reverse direction does NOT work by symmetry: from inside the
+  # namespace `localhost` is the namespace's own loopback, so Prowlarr cannot
+  # reach Sonarr, Radarr or FlareSolverr at localhost:<port>. Those three URLs
+  # are stored in Prowlarr's database and must point at the HOST end of the
+  # veth, 10.200.200.1, instead. Changing them is a runtime edit, not config —
+  # see notes/homelab if they ever read as localhost again.
+  systemd.services.prowlarr-webui-proxy = {
+    description = "Forward host:9696 to Prowlarr inside the wg-vpn netns";
+    after = [ "prowlarr.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:9696,fork,reuseaddr TCP:10.200.200.2:9696";
+      Restart = "always";
+    };
+  };
+
   # openFirewall left false (the default) on every service above —
   # trustedInterfaces = [ "tailscale0" ] in configuration.nix already makes
   # them reachable over the tailnet with no explicit firewall opening,
