@@ -83,6 +83,135 @@ $link" "$NTFY" >/dev/null
     };
   };
 
+  # ── PC parts deal watch (r/IrelandGaming) ────────────────────────────────
+  #
+  # Why this exists, with a measured example. On 8 Sep a SanDisk SN7100 2TB
+  # appeared on Amazon.ie at €127 — €63.50/TB against the €98/TB of the drive
+  # actually on the shortlist. It was gone in UNDER TEN MINUTES and went back
+  # to €332.89. Nobody in the thread got one:
+  #     "I saw this post when it was '2m' old, clicked the link and it was
+  #      already gone."
+  #     "The last day a 4tb for 280 last less than 24 hours before it went
+  #      back to 600€."
+  # A deal measured in minutes cannot be caught by checking a site now and
+  # then. It can be caught by a push the moment someone posts it.
+  #
+  # 🎯 WHY REDDIT AND NOT THE SHOPS.
+  # The sub aggregates deals across every retailer — Amazon, Currys, Komplett,
+  # Lenovo — so one feed covers them all, and humans filter for "actually good"
+  # before posting. Polling individual Amazon ASINs would have missed the
+  # SN7100 entirely: it was never on the shortlist.
+  #
+  # 🔴 r/gamingireland IS DEAD — 4 subscribers, two posts, both Feb 2022. The
+  # live sub is r/IrelandGaming, ~24.8k subscribers since 2017. Easy to get
+  # wrong; the dead one will never produce a signal and looks identical.
+  #
+  # ⚠️ REDDIT RATE-LIMITS THIS HARD, AND NOT ON A FIXED INTERVAL. The JSON API
+  # 403s outright from here. The Atom feed at /new/.rss is the only endpoint
+  # that answers — but measured on 8 Sep at a steady 90-second gap it went
+  # 200 → 429 → 200, so the limiter is stochastic, not a simple rate. Expect
+  # the occasional refusal even at 20 minutes.
+  #
+  # 🎯 A SKIPPED RUN IS HARMLESS, AND THAT IS BY DESIGN, NOT LUCK. The feed
+  # carries the newest 25 posts and this sub runs ~4-5 posts/day, so the window
+  # is roughly FIVE DAYS deep. A 429 costs nothing: the next successful poll
+  # still sees every post the failed one would have. So the script exits quietly
+  # on any non-200 rather than retrying — do not add a retry loop, and do not
+  # tighten the cadence to "compensate" for the misses. Both trade a harmless
+  # skip for a harder rate-limit.
+  #
+  # Unlike feed-watch, the URL and patterns are in the clear here on purpose.
+  # Wanting a cheap SSD is not sensitive, and a visible pattern is one that can
+  # be reviewed and tuned. Only NTFY comes from the env file, because the topic
+  # is a bearer credential in URL form.
+  systemd.services.parts-watch = {
+    description = "Watch r/IrelandGaming for PC parts deals → ntfy";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    path = [ pkgs.curl pkgs.gnugrep pkgs.gnused pkgs.coreutils ];
+    serviceConfig = {
+      Type = "oneshot";
+      StateDirectory = "parts-watch";
+      EnvironmentFile = "/srv/secrets/feed-watch.env";
+      ExecStart = pkgs.writeShellScript "parts-watch" ''
+        set -u
+        FEED="https://www.reddit.com/r/IrelandGaming/new/.rss"
+        UA="kodama-parts-watch/1.0 (homelab)"
+        : "''${NTFY:?NTFY not set in /srv/secrets/feed-watch.env}"
+
+        # A part must be named AND the title must look like a price/offer.
+        # Both are required: "RX 7800XT" alone is someone asking what to pay.
+        PARTS='nvme|ssd|m\.2|\bgpu\b|rtx|radeon|\brx ?[0-9]{4}|ryzen|\bcpu\b|ddr[45]|\bram\b|motherboard|\bmobo\b|\bpsu\b|monitor|[0-9]+ ?tb\b'
+        DEAL='€|eur|quid|sale|deal|price|% ?off|discount|reduced|amazon|currys|komplett|scan\.|overclockers|ebuyer|argos|harvey ?norman|lenovo|lidl|aldi'
+        # Questions and sales-by-owner, which match PARTS+DEAL but are not deals.
+        SKIP='valuation|what.?s it worth|how much|recommend|advice|help me|should i|selling my|\bwtb\b|looking (for|to buy)|opinions|is this .{0,20}good|where to (get|buy|find)|worth it\?|thoughts on'
+
+        feed=$(curl -s --max-time 30 -A "$UA" -w '\n%{http_code}' "$FEED") || { echo "fetch failed"; exit 0; }
+        code=$(printf '%s' "$feed" | tail -n1)
+        body=$(printf '%s' "$feed" | sed '$d')
+        if [ "$code" != "200" ]; then echo "reddit returned $code (rate limit?) — skipping"; exit 0; fi
+        [ -z "$body" ] && exit 0
+
+        # 🔴 FIRST RUN PRIMES, IT DOES NOT ALERT.
+        # The feed carries the last ~25 posts. With an empty dedupe log every
+        # matching one of them is "new", so a fresh deploy (or a lost state
+        # dir) would fire a burst of alerts for deals that are days old and
+        # long dead — training you to ignore the notification that matters.
+        # So: record what is already there, say nothing, start watching.
+        prime=0
+        if [ ! -f "$STATE_DIRECTORY/seen" ]; then
+          prime=1
+          # Create it NOW, not inside the loop. The loop runs in a subshell and
+          # only writes when something matches — so a priming run that matched
+          # nothing would leave no file, prime again next time, and swallow a
+          # real deal that arrived in between.
+          : > "$STATE_DIRECTORY/seen"
+        fi
+
+        printf '%s' "$body" | tr '\n' ' ' | sed 's|<entry>|\n<entry>|g' | while IFS= read -r entry; do
+          case "$entry" in "<entry>"*) ;; *) continue ;; esac
+          title=$(printf '%s' "$entry" | sed -n 's|.*<title>\(.*\)</title>.*|\1|p' | head -1)
+          [ -z "$title" ] && continue
+          link=$(printf '%s' "$entry" | grep -oE '<link[^>]*href="[^"]*"' | head -1 | sed 's/.*href="//;s/"$//')
+          id=$(printf '%s' "$entry" | sed -n 's|.*<id>\(.*\)</id>.*|\1|p' | head -1)
+          [ -z "$id" ] && id="$link"
+
+          printf '%s' "$title" | grep -qiE "$PARTS" || continue
+          printf '%s' "$title" | grep -qiE "$DEAL"  || continue
+          printf '%s' "$title" | grep -qiE "$SKIP"  && continue
+
+          key=$(printf '%s' "$id" | md5sum | cut -d' ' -f1)
+          if [ -f "$STATE_DIRECTORY/seen" ] && grep -qxF "$key" "$STATE_DIRECTORY/seen"; then continue; fi
+          echo "$key" >> "$STATE_DIRECTORY/seen"
+          if [ "$prime" = "1" ]; then echo "primed (no alert): $title"; continue; fi
+
+          msg=$(printf '%s' "$title" | sed -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&#39;/'/g" -e 's/&lt;/</g' -e 's/&gt;/>/g')
+          curl -s --max-time 15 \
+            -H "Title: PC parts deal" -H "Tags: computer,moneybag" -H "Priority: high" \
+            -d "$msg
+        $link" "$NTFY" >/dev/null
+          echo "alerted: $msg"
+        done
+
+        if [ -f "$STATE_DIRECTORY/seen" ]; then
+          tail -n 500 "$STATE_DIRECTORY/seen" > "$STATE_DIRECTORY/seen.tmp" \
+            && mv "$STATE_DIRECTORY/seen.tmp" "$STATE_DIRECTORY/seen"
+        fi
+      '';
+    };
+  };
+
+  systemd.timers.parts-watch = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      # 20 min, 08:00-23:40. Reddit 429s a tighter cadence, and a flash deal
+      # posted at 04:00 is not catchable by a human anyway.
+      OnCalendar = "*-*-* 08..23:00/20:00";
+      RandomizedDelaySec = "90";
+      Persistent = true;
+    };
+  };
+
   # ── UCD JLPT registration watch ──────────────────────────────────────────
   #
   # Exam is Sun 6 Dec 2026. UCD registration "historically opens ~August and
