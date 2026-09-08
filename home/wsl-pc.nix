@@ -177,50 +177,6 @@
     [[ -f ~/.secrets/env ]] && source ~/.secrets/env
   '';
 
-  # ── Used-drive watch (Adverts.ie + DoneDeal) ───────────────────────────────
-  #
-  # 🔴 WHY THIS LIVES ON KASASAGI AND NOT ON KODAMA, where every other watcher
-  # runs. Both sites sit behind Cloudflare and 403 plain curl outright, so the
-  # RSS-and-a-regex approach used for the reddit parts watch cannot reach them.
-  # scripts/drive-search.py in the robotina repo gets through with a REAL,
-  # HEADED Chrome attached over CDP — every headless variant is blocked — and a
-  # headed browser needs a display. kodama is a headless server; kasasagi has
-  # WSLg. That is the whole reason, and it is unlikely to change.
-  #
-  # ⚖️ Consequence, stated rather than hidden: this only runs when kasasagi is
-  # ON, and the live plan is to turn kasasagi off (~EUR350/yr). That is
-  # acceptable here and nowhere else — a used private-seller ad needs a human to
-  # message the seller anyway, so an alert that only arrives while Luis is at
-  # the machine loses almost nothing. Anything that must fire unattended belongs
-  # on kodama.
-  #
-  # Threshold and dedupe live in the script; the ntfy topic comes from
-  # ~/.secrets/env, which is not in this repo.
-  systemd.user.services.drive-watch = {
-    Unit.Description = "Watch Adverts.ie + DoneDeal for cheap used NVMe";
-    Service = {
-      Type = "oneshot";
-      # DISPLAY is for WSLg: the script falls back to :0 on its own, but being
-      # explicit means a failure is a real failure and not a missing variable.
-      Environment = [ "DISPLAY=:0" ];
-      ExecStart = "${pkgs.bash}/bin/bash -lc 'python3 %h/code/robotina/scripts/drive-search.py --type nvme --min-capacity 1000 --notify'";
-      # Chrome, Cloudflare and two scrapes: slow, and a hang must not wedge the timer.
-      TimeoutStartSec = "12min";
-    };
-  };
-
-  systemd.user.timers.drive-watch = {
-    Unit.Description = "Daily used-drive check";
-    Timer = {
-      # Once a day is right: these are private-seller ads that sit for days, not
-      # flash sales measured in minutes. The minute-scale deals are reddit's job.
-      OnCalendar = "*-*-* 19:30";
-      RandomizedDelaySec = "20min";
-      Persistent = true;
-    };
-    Install.WantedBy = [ "timers.target" ];
-  };
-
   home.stateVersion = "24.05";
   programs.home-manager.enable = true;
 }
