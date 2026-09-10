@@ -227,15 +227,34 @@ $link" "$NTFY" >/dev/null
   # — which increment when ANY page on ucd.ie is republished. So every unrelated
   # UCD edit fired the alert.
   #
-  # The CMS wraps real content in component comments, and on this page component
-  # 18 is the ONLY content component (~220 chars). Hash that and the churn is
-  # gone, because the nav is not in it.
+  # The fix is to hash only the real content, so the nav churn is not in it.
+  #
+  # 🔴 FIXED 10 Sep 2026 — the watcher was healthy and watching the wrong page.
+  # It ran every 15 min and said "no change" for three days while UCD posted a
+  # notice on 9 Sep that registration was delayed. Two faults, both here:
+  #
+  #   1. WRONG URL. /exams/bookajlptexamination/ is a STUB, last edited
+  #      10 Mar 2026, whose entire body is "Examination places can be requested
+  #      provided places remain available." (140 bytes). It will not change
+  #      until booking opens. UCD posts its dated notices on the PARENT page,
+  #      /japan/exams/ — that is the noticeboard, and it carried 9 Sep, 27 Aug,
+  #      20 Mar and 12 Mar entries.
+  #   2. BRITTLE ANCHOR. The extractor keyed on the literal component name
+  #      "ucdcanc-InsidePanelFullWidth - component 18". The parent page uses
+  #      ucdcanc-InsidePanelWithImage, so even pointed at the right URL the old
+  #      pattern would have matched nothing.
+  #
+  # 🎯 So: watch BOTH pages, and match the component wrapper GENERICALLY — on
+  # "- component N -->" rather than on the panel's class name. <main> was tried
+  # and rejected: it includes the breadcrumb, whose self-link to
+  # /bookajlptexamination/ matches the booking regex and fired the max-priority
+  # alert on every run. Measured 10 Sep against both live pages.
   #
   # 🎯 Two signals, deliberately different strengths:
-  #   HIGH — a <form> or a book/apply/register link appears inside component 18.
+  #   HIGH — a <form> or a book/apply/register link appears inside <main>.
   #          That is registration actually opening: a positive assertion, which
   #          survives wording changes and says WHAT happened.
-  #   LOW  — component 18's text merely changed. Worth a look, not an emergency.
+  #   LOW  — the text merely changed. Worth a look, not an emergency.
   #
   # ⏱️ Every 15 min, 07:00-21:45. Sixty requests/day to a public page is less
   # than one visitor. No overnight polling: UCD publishes in office hours and
@@ -244,65 +263,79 @@ $link" "$NTFY" >/dev/null
   # ⬜ TURN THIS OFF once registered, or after 6 Dec 2026. A watcher for an event
   # that has passed is pure noise, and noise is what hides the next real alert.
   systemd.services.jlpt-watch = {
-    description = "Watch UCD JLPT booking page for registration opening";
+    description = "Watch the UCD JLPT pages for registration opening";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     path = [ pkgs.curl pkgs.gnugrep pkgs.gnused pkgs.coreutils ];
     serviceConfig = {
       Type = "oneshot";
       StateDirectory = "jlpt-watch";
-      # Only NTFY is read from here; the URL below is not a secret.
+      # Only NTFY is read from here; the URLs below are not secrets.
       EnvironmentFile = "/srv/secrets/feed-watch.env";
       ExecStart = pkgs.writeShellScript "jlpt-watch" ''
         set -u
-        URL="https://www.ucd.ie/japan/exams/bookajlptexamination/"
+        # The noticeboard first, then the booking stub where the form appears.
+        URLS="https://www.ucd.ie/japan/exams/ https://www.ucd.ie/japan/exams/bookajlptexamination/"
         UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"
         : "''${NTFY:?NTFY not set in /srv/secrets/feed-watch.env}"
 
-        page=$(curl -s --max-time 30 -A "$UA" "$URL") || { echo "fetch failed"; exit 0; }
-        [ -z "$page" ] && { echo "empty response"; exit 0; }
+        for URL in $URLS; do
+          key=$(printf "%s" "$URL" | md5sum | cut -d" " -f1)
 
-        # Component 18 only — see the note above about nav ids.
-        comp=$(printf "%s" "$page" | tr "\n" " " \
-          | sed -n "s|.*ucdcanc-InsidePanelFullWidth - component 18 -->\(.*\)<!--/ucdcanc-InsidePanelFullWidth.*|\1|p")
-        if [ -z "$comp" ]; then
-          # The component vanished or was renamed — that is itself a change worth
-          # knowing about, and means every later run would silently compare "".
-          curl -s --max-time 15 -H "Title: JLPT watch needs attention" -H "Tags: warning" \
-            -H "Priority: high" \
-            -d "Component 18 not found on the UCD booking page. The page structure changed; the watcher is blind until it is updated.
+          page=$(curl -s --max-time 30 -A "$UA" "$URL") || { echo "fetch failed: $URL"; continue; }
+          [ -z "$page" ] && { echo "empty response: $URL"; continue; }
+
+          # Anchor on the CMS component wrapper, but match it GENERICALLY — by
+          # "- component N -->", not by the panel's class name. Both pages use a
+          # different name (InsidePanelWithImage vs InsidePanelFullWidth) and
+          # keying on either one is what blinded the previous version.
+          #
+          # Deliberately NOT <main>: main includes the breadcrumb, whose
+          # self-link to /bookajlptexamination/ matches the booking regex below
+          # and would fire the max-priority alert on every single run.
+          comp=$(printf "%s" "$page" | tr "\n" " " \
+            | sed -n "s|.*- component [0-9]* -->\(.*\)<!--/ucdcanc-.*|\1|p")
+
+          if [ -z "$comp" ]; then
+            # No content component means the extractor is blind, and every later
+            # run would silently compare "" against "". Worth waking someone for.
+            curl -s --max-time 15 -H "Title: JLPT watch needs attention" -H "Tags: warning" \
+              -H "Priority: high" \
+              -d "No content component found on $URL — the page structure changed and the watcher is blind until it is updated." "$NTFY" >/dev/null
+            continue
+          fi
+
+          text=$(printf "%s" "$comp" | sed "s|<[^>]*>| |g" | tr -s " \t" " ")
+          hash=$(printf "%s" "$text" | md5sum | cut -d" " -f1)
+          # Drop the page's own link to itself before testing for a booking link.
+          signal=$(printf "%s" "$comp" | sed "s|href=\"/japan/exams/bookajlptexamination/\"||g" \
+            | grep -ciE "<form|href=\"[^\"]*(book|apply|register|eventbrite|ticket)" || true)
+
+          prev=""
+          [ -f "$STATE_DIRECTORY/$key.hash" ] && prev=$(cat "$STATE_DIRECTORY/$key.hash")
+          printf "%s" "$hash" > "$STATE_DIRECTORY/$key.hash"
+          printf "%s" "$text" > "$STATE_DIRECTORY/$key.text"
+
+          if [ "$signal" -gt 0 ]; then
+            curl -s --max-time 15 -H "Title: JLPT REGISTRATION MAY BE OPEN" -H "Tags: rotating_light" \
+              -H "Priority: max" \
+              -d "A form or booking link has appeared. Exam: Sun 6 Dec 2026. Places fill fast, and UCD give only ONE DAY of notice.
         $URL" "$NTFY" >/dev/null
-          exit 0
-        fi
+            echo "HIGH: booking signal found on $URL"
+            continue
+          fi
 
-        text=$(printf "%s" "$comp" | sed "s|<[^>]*>| |g" | tr -s " \t" " ")
-        hash=$(printf "%s" "$text" | md5sum | cut -d" " -f1)
-        signal=$(printf "%s" "$comp" | grep -ciE "<form|href=\"[^\"]*(book|apply|register|eventbrite|ticket)" || true)
-
-        prev=""
-        [ -f "$STATE_DIRECTORY/hash" ] && prev=$(cat "$STATE_DIRECTORY/hash")
-        printf "%s" "$hash" > "$STATE_DIRECTORY/hash"
-        printf "%s" "$text" > "$STATE_DIRECTORY/last-text"
-
-        if [ "$signal" -gt 0 ]; then
-          curl -s --max-time 15 -H "Title: JLPT REGISTRATION MAY BE OPEN" -H "Tags: rotating_light" \
-            -H "Priority: max" \
-            -d "A form or booking link has appeared on the UCD JLPT page. Exam: Sun 6 Dec 2026. Places fill fast.
+          if [ -n "$prev" ] && [ "$prev" != "$hash" ]; then
+            curl -s --max-time 15 -H "Title: UCD JLPT page changed" -H "Tags: eyes" \
+              -H "Priority: default" \
+              -d "$text
         $URL" "$NTFY" >/dev/null
-          echo "HIGH: booking signal found"
-          exit 0
-        fi
+            echo "LOW: text changed on $URL"
+            continue
+          fi
 
-        if [ -n "$prev" ] && [ "$prev" != "$hash" ]; then
-          curl -s --max-time 15 -H "Title: UCD JLPT page changed" -H "Tags: eyes" \
-            -H "Priority: default" \
-            -d "$text
-        $URL" "$NTFY" >/dev/null
-          echo "LOW: text changed"
-          exit 0
-        fi
-
-        echo "no change"
+          echo "no change: $URL"
+        done
       '';
     };
   };
