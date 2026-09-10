@@ -80,9 +80,20 @@ in
     cmdLine = "archisobasedir=arch archiso_http_srv=http://${lanIp}:${toString httpPort}/omarchy/ checksum=y initramfs_async=0";
   };
 
-  # nginx is already enabled in tls.nix as the reverse proxy; this adds one
-  # plain-HTTP vhost. TLS is pointless here — iPXE would need a CA bundle and
-  # the payload is a public ISO on the LAN.
+  # 🔴 nginx is NOT already running. tls.nix declares it, but that whole file is
+  # `mkIf enabled` and deliberately inert until the Cloudflare API token exists
+  # on the box — so `services.nginx.enable` is false and a bare virtualHosts
+  # declaration is silently dead config. Found on 10 Sep by curl returning 000
+  # and `systemctl status nginx` answering "Unit could not be found".
+  #
+  # So enable it here. ⚠️ This does NOT turn tls.nix on: no ACME, no cert, no
+  # 443. The vhost below binds one address and one port explicitly, which is
+  # the same rule tls.nix states — nginx never binds 0.0.0.0 on this host,
+  # because Tailscale already holds 443.
+  services.nginx.enable = true;
+
+  # Plain HTTP on purpose. iPXE would need a CA bundle for TLS, and the payload
+  # is a public ISO travelling over the LAN.
   services.nginx.virtualHosts."netboot" = {
     listen = [ { addr = lanIp; port = httpPort; } ];
     root = "${root}/http";
