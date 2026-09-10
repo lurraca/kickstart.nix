@@ -121,6 +121,9 @@
     shell = pkgs.zsh;
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILQ8dCAsB8WDDR9lqR99WHzSgCbTOZJoPD1g5Jf12CIP kasasagi@wsl"
+      # tokoyo — the gaming PC on Omarchy, added 11 Sep 2026. Private key in
+      # 1Password: "tokoyo - kasasagi SSH key (kodama access)".
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN80BgJvRiMykpRv7kOz3ueZHTftG8HAiL1AC92fSxN3 kasasagi@tokoyo"
       # Termius on the phone, added 7 Sep 2026. Kept as a key even though
       # Tailscale SSH is enabled below: the key still works if the tailnet
       # policy is ever wrong, and locking phone access to Tailscale SSH alone

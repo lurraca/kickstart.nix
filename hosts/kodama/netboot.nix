@@ -65,8 +65,10 @@ let
   iso = "${root}/http/omarchy";
 in
 {
+  # Omarchy installed on tokoyo 10 Sep — netboot ladder retired per the
+  # handover: proxy-DHCP answers ANY LAN machine that PXE-boots.
   services.pixiecore = {
-    enable = true;
+    enable = false;
     openFirewall = true;
     mode = "boot";
     port = pxePort;
@@ -77,7 +79,11 @@ in
     # archiso_http_srv must be the directory CONTAINING `arch/` — the initramfs
     # fetches ${"\${archiso_http_srv}"}arch/x86_64/airootfs.sfs from it. Served by nginx
     # below rather than by pixiecore, because it is 5.9 GB.
-    cmdLine = "archisobasedir=arch archiso_http_srv=http://${lanIp}:${toString httpPort}/omarchy/ checksum=y initramfs_async=0";
+    # ip= STATIC, not dhcp: in the initramfs the NIC comes up fine but a DHCP
+    # discover inside the installer got no answer (link proven good by ping,
+    # 10 Sep). Static sidesteps the mystery — .199 reserved for this purpose.
+    # Format: ip=<client-ip>::<gateway>:<netmask>::<device>:<autoconf>
+    cmdLine = "archisobasedir=arch ip=192.168.1.199::192.168.1.1:255.255.255.0::eth0:none archiso_http_srv=http://${lanIp}:${toString httpPort}/omarchy/ checksum=y initramfs_async=0";
   };
 
   # 🔴 nginx is NOT already running. tls.nix declares it, but that whole file is
