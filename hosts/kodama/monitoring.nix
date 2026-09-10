@@ -104,6 +104,22 @@
         static_configs = [{ targets = [ "100.97.61.16:9182" ]; }];
       }
       {
+        # tokoyo — the gaming PC since it moved to Omarchy on 10 Sep 2026.
+        # Deliberately its OWN job rather than a second target under "node":
+        # every kodama dashboard queries bare node_* metrics with no instance
+        # or job filter, so folding tokoyo into "node" would silently double
+        # every series on the storage and health boards.
+        #
+        # Tailnet address for the reason recorded on the windows-exporter job
+        # below: this machine has no DHCP reservation and has already drifted
+        # once (192.168.1.13 -> .4), which killed both scrapes silently.
+        #
+        # Reads "down" whenever the machine is off. That is the plan for it,
+        # not a fault — see robotina notes/homelab/tokoyo-install.md.
+        job_name = "node-tokoyo";
+        static_configs = [{ targets = [ "100.113.33.92:9100" ]; }];
+      }
+      {
         # nvidia_gpu_exporter, native Windows service on kasasagi via NSSM
         # (winget install, same pattern as windows_exporter above — the WSL
         # + systemd --user route hit a PATH gotcha for nvidia-smi and would
