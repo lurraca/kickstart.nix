@@ -5,23 +5,35 @@
 # same reflex applies. Reusable afterwards for memtest86, GParted, a rescue
 # shell, and the reinstall the Omarchy ladder anticipates.
 #
-#   kasasagi UEFI PXE → dnsmasq proxy-DHCP (kodama) → ipxe.efi over TFTP
-#                     → iPXE fetches boot.ipxe over HTTP
-#                     → kernel + initramfs + archiso_http_srv
+#   kasasagi UEFI PXE → pixiecore proxy-DHCP (kodama) → its own iPXE over TFTP
+#                     → iPXE fetches kernel + initrd from pixiecore over HTTP
+#                     → initramfs pulls airootfs.sfs from nginx (5.9 GB)
 #
 # ── The three things that will break this ────────────────────────────────────
 #
-# 1. 🔴 pihole-FTL OWNS PORT 53. dnsmasq is the standard PXE tool and wants 53
-#    too. `port = 0` turns its DNS off entirely. Getting this wrong takes DNS
-#    down for the whole house — the 29 Aug outage, again, on purpose.
+# 1. 🔴 dnsmasq CANNOT BE USED ON THIS HOST AT ALL — and `port = 0` does not
+#    save it. The plan assumed turning dnsmasq's DNS off would let it coexist
+#    with pihole-FTL. It does not: nixpkgs carries a build-time assertion,
+#    `pihole-ftl conflicts with dnsmasq. Please disable one of them.`, which
+#    fires during evaluation regardless of any runtime setting. Discovered by
+#    the rebuild failing on 10 Sep.
+#
+#    🎯 Pixiecore instead — a single binary that does proxy-DHCP, TFTP and HTTP
+#    and never binds 53, so the whole class of "PXE took down the house's DNS"
+#    disappears rather than being carefully avoided.
 #
 # 2. 🔴 PROXY-DHCP, NOT DHCP. The router at 192.168.1.1 keeps handing out
-#    addresses; dnsmasq only adds the boot options. Never run a second real
-#    DHCP server on this LAN.
+#    addresses; pixiecore only adds the boot options. Never run a second real
+#    DHCP server on this LAN — pixiecore's boot mode is proxy-only by design.
 #
 # 3. 🔴 OMARCHY'S OWN PXE PATH IS SYSLINUX = LEGACY BIOS ONLY. Using it would
-#    mean enabling CSM on kasasagi. iPXE chainloaded over UEFI instead, loading
-#    kernel + initrd directly.
+#    mean enabling CSM on kasasagi. Pixiecore chainloads its own iPXE over
+#    UEFI and loads kernel + initrd directly.
+#
+# 4. ⬜ TURN THIS OFF AFTER THE INSTALL. Proxy-DHCP answers *any* machine on the
+#    LAN that PXE-boots, and it will hand every one of them an Omarchy
+#    installer. One PC on this network makes that harmless today; it is not a
+#    thing to leave running for months. `services.pixiecore.enable = false;`
 #
 # ── Facts measured off the real ISO on 10 Sep, not assumed ───────────────────
 #
@@ -43,47 +55,29 @@
 
 let
   lanIp = "192.168.1.111";
-  httpPort = 8090;
+  httpPort = 8090;    # nginx, serves the 5.9 GB squashfs
+  pxePort = 8091;     # pixiecore's own HTTP, serves kernel + initrd
 
   # NOT /srv. /srv is in the Backrest "srv" plan and goes to Cloudflare R2
   # nightly; a 6 GB ISO tree that can be re-downloaded in 64 seconds has no
   # business in an off-site backup. /data is local-only and has the room.
   root = "/data/netboot";
-
-  # Served at ${base}/ — archiso fetches ${base}/arch/x86_64/airootfs.sfs from
-  # it, so this must be the directory that CONTAINS `arch/`.
-  bootScript = pkgs.writeText "boot.ipxe" ''
-    #!ipxe
-    set base http://${lanIp}:${toString httpPort}/omarchy
-    echo Booting Omarchy from ''${base}
-    kernel ''${base}/arch/boot/x86_64/vmlinuz-linux-t2 archisobasedir=arch archiso_http_srv=''${base}/ checksum=y initramfs_async=0 ip=dhcp
-    initrd ''${base}/arch/boot/x86_64/initramfs-linux-t2.img
-    boot
-  '';
+  iso = "${root}/http/omarchy";
 in
 {
-  services.dnsmasq = {
+  services.pixiecore = {
     enable = true;
-    settings = {
-      # 🔴 DNS OFF. pihole-FTL owns 53. See note 1 above.
-      port = 0;
+    openFirewall = true;
+    mode = "boot";
+    port = pxePort;
 
-      interface = "eno2";
-      bind-interfaces = true;
+    kernel = "${iso}/arch/boot/x86_64/vmlinuz-linux-t2";
+    initrd = "${iso}/arch/boot/x86_64/initramfs-linux-t2.img";
 
-      # Proxy mode: advertise boot options, hand out no addresses. See note 2.
-      dhcp-range = [ "192.168.1.0,proxy" ];
-
-      enable-tftp = true;
-      tftp-root = "${root}/tftp";
-
-      # Break the chainload loop. Without this, ipxe.efi boots, asks again, is
-      # told to load ipxe.efi, and loops forever. iPXE identifies itself with
-      # DHCP option 175, so: no tag → send the binary; tagged → send the script.
-      dhcp-match = [ "set:ipxe,175" ];
-      pxe-service = [ ''tag:!ipxe,x86-64_EFI,"Netboot (iPXE)",ipxe'' ];
-      dhcp-boot = [ "tag:ipxe,http://${lanIp}:${toString httpPort}/boot.ipxe" ];
-    };
+    # archiso_http_srv must be the directory CONTAINING `arch/` — the initramfs
+    # fetches ${"\${archiso_http_srv}"}arch/x86_64/airootfs.sfs from it. Served by nginx
+    # below rather than by pixiecore, because it is 5.9 GB.
+    cmdLine = "archisobasedir=arch archiso_http_srv=http://${lanIp}:${toString httpPort}/omarchy/ checksum=y initramfs_async=0";
   };
 
   # nginx is already enabled in tls.nix as the reverse proxy; this adds one
@@ -101,19 +95,11 @@ in
   };
 
   systemd.tmpfiles.rules = [
-    "d ${root}        0755 root root -"
-    "d ${root}/tftp   0755 root root -"
-    "d ${root}/http   0755 root root -"
-    # iPXE from nixpkgs rather than a downloaded binary — reproducible, and it
-    # updates with the channel instead of rotting in a directory.
-    "L+ ${root}/tftp/ipxe.efi  - - - - ${pkgs.ipxe}/ipxe.efi"
-    "L+ ${root}/http/boot.ipxe - - - - ${bootScript}"
+    "d ${root}      0755 root root -"
+    "d ${root}/http 0755 root root -"
   ];
 
-  networking.firewall = {
-    # 67 proxy-DHCP · 69 TFTP · 4011 PXE (proxy-DHCP replies to the client's
-    # second request on 4011, and leaving it closed is a classic silent hang).
-    allowedUDPPorts = [ 67 69 4011 ];
-    allowedTCPPorts = [ httpPort ];
-  };
+  # pixiecore's openFirewall covers 67/69/4011 and its own HTTP port. This is
+  # just nginx's netboot vhost.
+  networking.firewall.allowedTCPPorts = [ httpPort ];
 }
