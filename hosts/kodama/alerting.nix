@@ -307,16 +307,28 @@
         # /var/lib/{bluetooth,pihole,prometheus2,tailscale} all report /srv's
         # free space, and /nix/store reports /'s — a naive rule alerts five
         # times for one filesystem.
+        # 🔴 Every rule in this file that reads node_* is pinned to
+        # job="node" — kodama itself. Added 11 Sep 2026, when tokoyo (the
+        # gaming PC on Omarchy) became a SECOND node_exporter target.
+        #
+        # Without the filter these rules silently began evaluating a machine
+        # they were never written for: tokoyo also reports mountpoint="/" and
+        # "/boot", so DiskSpaceLow/Critical/FillingFast matched both hosts,
+        # and the annotation says only "{{ $labels.mountpoint }}" — a page
+        # reading "/ is running low" with no way to tell which box.
+        #
+        # The same trap was caught in monitoring.nix for the dashboards and
+        # missed here. Any new node_* rule needs the job label too.
         rules = [
           {
             alert = "DiskSpaceLow";
             expr = ''
-              (node_filesystem_avail_bytes{mountpoint="/"} < 8e9)
-              or (node_filesystem_avail_bytes{mountpoint="/boot"} < 500e6)
-              or (node_filesystem_avail_bytes{mountpoint="/srv"} < 8e9)
-              or (node_filesystem_avail_bytes{mountpoint="/data"} < 15e9)
-              or (node_filesystem_avail_bytes{mountpoint="/data/media"} < 60e9)
-              or (node_filesystem_avail_bytes{mountpoint="/data/photos"} < 60e9)
+              (node_filesystem_avail_bytes{job="node",mountpoint="/"} < 8e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/boot"} < 500e6)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/srv"} < 8e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/data"} < 15e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/data/media"} < 60e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/data/photos"} < 60e9)
             '';
             for = "30m";
             labels.severity = "warning";
@@ -328,12 +340,12 @@
           {
             alert = "DiskSpaceCritical";
             expr = ''
-              (node_filesystem_avail_bytes{mountpoint="/"} < 4e9)
-              or (node_filesystem_avail_bytes{mountpoint="/boot"} < 200e6)
-              or (node_filesystem_avail_bytes{mountpoint="/srv"} < 4e9)
-              or (node_filesystem_avail_bytes{mountpoint="/data"} < 8e9)
-              or (node_filesystem_avail_bytes{mountpoint="/data/media"} < 30e9)
-              or (node_filesystem_avail_bytes{mountpoint="/data/photos"} < 30e9)
+              (node_filesystem_avail_bytes{job="node",mountpoint="/"} < 4e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/boot"} < 200e6)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/srv"} < 4e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/data"} < 8e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/data/media"} < 30e9)
+              or (node_filesystem_avail_bytes{job="node",mountpoint="/data/photos"} < 30e9)
             '';
             for = "10m";
             labels.severity = "critical";
@@ -349,7 +361,7 @@
             # a level-based rule says nothing until it is nearly too late.
             alert = "DiskFillingFast";
             expr = ''
-              predict_linear(node_filesystem_avail_bytes{mountpoint=~"/|/srv|/data|/data/media|/data/photos"}[6h], 24*3600) < 0
+              predict_linear(node_filesystem_avail_bytes{job="node",mountpoint=~"/|/srv|/data|/data/media|/data/photos"}[6h], 24*3600) < 0
             '';
             for = "1h";
             labels.severity = "warning";
@@ -412,7 +424,7 @@
             # red. The external Worker catches that instead — correct division,
             # but worth remembering when this stays quiet.
             alert = "SystemdUnitFailed";
-            expr = ''node_systemd_unit_state{state="failed"} == 1'';
+            expr = ''node_systemd_unit_state{job="node",state="failed"} == 1'';
             for = "10m";
             labels.severity = "warning";
             annotations = {
