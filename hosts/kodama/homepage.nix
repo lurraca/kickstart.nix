@@ -52,6 +52,10 @@
         # kasasagi: same shape as kodama — main + GPU + disk, one card each
         # (the 4-mapping cap keeps forcing a split rather than one big card).
         { "kasasagi" = { style = "row"; columns = 4; }; }
+        # tokoyo: the same machine as kasasagi, booted into Omarchy. Both rows
+        # exist deliberately while Windows is kept as the parachute — each
+        # reads "down" when the other is running, which is correct.
+        { "tokoyo" = { style = "row"; columns = 3; }; }
         # The remaining 4 kodama services are uniform (icon + description
         # only), so a clean 2x2 grid with no ragged trailing row.
         { "Kodama services" = { style = "row"; columns = 2; }; }
@@ -272,7 +276,7 @@
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28node_cpu_seconds_total%7Bmode%3D%22idle%22%7D%5B1m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%20/%20node_memory_MemTotal_bytes%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28hass_sensor_power_w%7Bentity%3D%22sensor.kodama_current_power%22%7D%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28node_cpu_seconds_total%7Bjob%3D%22node%22%2Cmode%3D%22idle%22%7D%5B1m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bjob%3D%22node%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bjob%3D%22node%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28hass_sensor_power_w%7Bentity%3D%22sensor.kodama_current_power%22%7D%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "CPU"; format = "float"; suffix = " %"; }
                   { field = "data.result.1.value.1"; label = "RAM"; format = "float"; suffix = " %"; }
@@ -297,7 +301,7 @@
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2F%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22root%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fsrv%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22srv%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22data%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2F%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22root%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fsrv%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22srv%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fdata%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22data%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "/ free"; format = "float"; suffix = " GiB"; }
                   { field = "data.result.1.value.1"; label = "srv free"; format = "float"; suffix = " GiB"; }
@@ -323,7 +327,7 @@
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fmedia%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22mediafree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fmedia%22%7D%20%2F%20node_filesystem_size_bytes%7Bmountpoint%3D%22%2Fdata%2Fmedia%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22mediapct%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fphotos%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22photosfree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bmountpoint%3D%22%2Fdata%2Fphotos%22%7D%20%2F%20node_filesystem_size_bytes%7Bmountpoint%3D%22%2Fdata%2Fphotos%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22photospct%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fdata%2Fmedia%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22mediafree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fdata%2Fmedia%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fdata%2Fmedia%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22mediapct%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fdata%2Fphotos%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22photosfree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fdata%2Fphotos%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node%22%2Cmountpoint%3D%22%2Fdata%2Fphotos%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22photospct%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "media free"; format = "float"; suffix = " GiB"; }
                   { field = "data.result.1.value.1"; label = "media used"; format = "float"; suffix = " %"; }
@@ -352,7 +356,7 @@
               widget = {
                 type = "customapi";
                 refreshInterval = 10000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20node_boot_time_seconds%29%20%2F%2086400%2C%200.1%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20node_boot_time_seconds%7Bjob%3D%22node%22%7D%29%20%2F%2086400%2C%200.1%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "days up"; format = "float"; suffix = " d"; }
                 ];
@@ -443,6 +447,81 @@
                 type = "customapi";
                 refreshInterval = 10000;
                 url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20windows_system_boot_time_timestamp%29%20%2F%2086400%2C%200.1%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "days up"; format = "float"; suffix = " d"; }
+                ];
+              };
+            };
+          }
+        ];
+      }
+      {
+        "tokoyo" = [
+          {
+            "tokoyo (Prometheus)" = {
+              href = "http://kodama:3000";
+              description = "CPU / RAM / temp / power — the gaming PC on Omarchy since 10 Sep 2026";
+              icon = "mdi-desktop-tower";
+              # Same customapi shape as the kodama and kasasagi cards, reading
+              # node_exporter on tokoyo (job "node-tokoyo", tailnet address).
+              #
+              # 🔴 Every selector is pinned to that job. The kodama cards above
+              # were NOT, and the moment tokoyo became a second node_exporter
+              # target their CPU figure silently became the average of BOTH
+              # machines and the RAM figure picked whichever series Prometheus
+              # returned first. Fixed in the same change. Any new node_* widget
+              # needs the job label.
+              #
+              # Power is the SAME entity as the kasasagi card — one Tapo outlet,
+              # one physical machine, two boots. It reads correctly whichever
+              # OS is running, which is the point.
+              #
+              # Temp is max() across 15 hwmon sensors: k10temp Tctl runs hottest
+              # and is the one worth watching on a 5800X under the performance
+              # governor.
+              widget = {
+                type = "customapi";
+                refreshInterval = 2000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28node_cpu_seconds_total%7Bjob%3D%22node-tokoyo%22%2Cmode%3D%22idle%22%7D%5B1m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bjob%3D%22node-tokoyo%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bjob%3D%22node-tokoyo%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28max%28node_hwmon_temp_celsius%7Bjob%3D%22node-tokoyo%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22temp%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28hass_sensor_power_w%7Bentity%3D%22sensor.kasasagi_current_power%22%7D%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "CPU"; format = "float"; suffix = " %"; }
+                  { field = "data.result.1.value.1"; label = "RAM"; format = "float"; suffix = " %"; }
+                  { field = "data.result.2.value.1"; label = "Temp"; format = "float"; suffix = " °C"; }
+                  { field = "data.result.3.value.1"; label = "Power"; format = "float"; suffix = " W"; }
+                ];
+              };
+            };
+          }
+          {
+            "tokoyo NVMe · 1 TB" = {
+              href = "http://kodama:3000";
+              description = "UMIS 1 TB — the Omarchy disk. Windows lives on the other NVMe and is not visible from here";
+              icon = "mdi-harddisk";
+              # Free GiB rather than percent, same reasoning as kodama's card:
+              # on a volume this size a ratio says nothing useful.
+              # /boot is 2 GB of ESP and reported in MiB — Arch keeps kernels
+              # there, so it fills in a way root never will.
+              widget = {
+                type = "customapi";
+                refreshInterval = 2000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node-tokoyo%22%2Cmountpoint%3D%22%2F%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22rootfree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node-tokoyo%22%2Cmountpoint%3D%22%2F%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node-tokoyo%22%2Cmountpoint%3D%22%2F%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22rootpct%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node-tokoyo%22%2Cmountpoint%3D%22%2Fboot%22%7D%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22bootfree%22%2C%20%22%22%2C%20%22%22%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "root free"; format = "float"; suffix = " GiB"; }
+                  { field = "data.result.1.value.1"; label = "root used"; format = "float"; suffix = " %"; }
+                  { field = "data.result.2.value.1"; label = "boot free"; format = "float"; suffix = " MiB"; }
+                ];
+              };
+            };
+          }
+          {
+            "tokoyo Uptime" = {
+              href = "http://kodama:3000";
+              description = "Days since boot — this machine is MEANT to be off, so a high number is the alarming one";
+              icon = "mdi-clock-outline";
+              widget = {
+                type = "customapi";
+                refreshInterval = 10000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20node_boot_time_seconds%7Bjob%3D%22node-tokoyo%22%7D%29%20%2F%2086400%2C%200.1%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "days up"; format = "float"; suffix = " d"; }
                 ];
