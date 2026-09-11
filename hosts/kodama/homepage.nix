@@ -55,7 +55,7 @@
         # tokoyo: the same machine as kasasagi, booted into Omarchy. Both rows
         # exist deliberately while Windows is kept as the parachute — each
         # reads "down" when the other is running, which is correct.
-        { "tokoyo" = { style = "row"; columns = 3; }; }
+        { "tokoyo" = { style = "row"; columns = 4; }; }
         # The remaining 4 kodama services are uniform (icon + description
         # only), so a clean 2x2 grid with no ragged trailing row.
         { "Kodama services" = { style = "row"; columns = 2; }; }
@@ -476,18 +476,45 @@
               # one physical machine, two boots. It reads correctly whichever
               # OS is running, which is the point.
               #
-              # Temp is max() across 15 hwmon sensors: k10temp Tctl runs hottest
-              # and is the one worth watching on a 5800X under the performance
-              # governor.
+              # 🔴 CPU temp is joined to node_hwmon_sensor_label{label="Tctl"},
+              # NOT max() across hwmon. The naive max() was wrong on this box:
+              # measured 11 Sep, Tctl 42 °C while max() reported 49 °C from a
+              # different chip entirely. Tctl is the number that matters on a
+              # 5800X, and the join survives the PCI path changing.
               widget = {
                 type = "customapi";
                 refreshInterval = 2000;
-                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28node_cpu_seconds_total%7Bjob%3D%22node-tokoyo%22%2Cmode%3D%22idle%22%7D%5B1m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bjob%3D%22node-tokoyo%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bjob%3D%22node-tokoyo%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28max%28node_hwmon_temp_celsius%7Bjob%3D%22node-tokoyo%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22temp%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28hass_sensor_power_w%7Bentity%3D%22sensor.kasasagi_current_power%22%7D%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29";
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28node_cpu_seconds_total%7Bjob%3D%22node-tokoyo%22%2Cmode%3D%22idle%22%7D%5B1m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bjob%3D%22node-tokoyo%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bjob%3D%22node-tokoyo%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28max%28node_hwmon_temp_celsius%7Bjob%3D%22node-tokoyo%22%7D%20%2A%20on%28chip%2Csensor%29%20group_left%28%29%20node_hwmon_sensor_label%7Bjob%3D%22node-tokoyo%22%2Clabel%3D%22Tctl%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cputemp%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28hass_sensor_power_w%7Bentity%3D%22sensor.kasasagi_current_power%22%7D%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "CPU"; format = "float"; suffix = " %"; }
                   { field = "data.result.1.value.1"; label = "RAM"; format = "float"; suffix = " %"; }
-                  { field = "data.result.2.value.1"; label = "Temp"; format = "float"; suffix = " °C"; }
+                  { field = "data.result.2.value.1"; label = "CPU temp"; format = "float"; suffix = " °C"; }
                   { field = "data.result.3.value.1"; label = "Power"; format = "float"; suffix = " W"; }
+                ];
+              };
+            };
+          }
+          {
+            "tokoyo GPU · RTX 3070" = {
+              href = "http://kodama:3000";
+              description = "Utilisation / temp / power / VRAM — the same exporter the Windows boot used, so the metric names match";
+              icon = "mdi-expansion-card";
+              # nvidia_gpu_exporter 1.13.1 (AUR, `omarchy pkg aur add`), port
+              # 9835 — the same port and the same metric names as the Windows
+              # instance, which is why the existing GPU panels needed no rewrite.
+              #
+              # Power here is the CARD only; the wall figure on the card above
+              # is the whole machine. Measured 11 Sep: ~19 W idle in P8 against
+              # 41 W on Windows, and ~120-165 W in a Dota match.
+              widget = {
+                type = "customapi";
+                refreshInterval = 2000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28nvidia_smi_utilization_gpu_ratio%7Bjob%3D%22nvidia-gpu-exporter-tokoyo%22%7D%20%2A%20100%2C%200.1%29%2C%20%22metric%22%2C%20%22gpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28nvidia_smi_temperature_gpu%7Bjob%3D%22nvidia-gpu-exporter-tokoyo%22%7D%2C%200.1%29%2C%20%22metric%22%2C%20%22temp%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28nvidia_smi_power_draw_watts%7Bjob%3D%22nvidia-gpu-exporter-tokoyo%22%7D%2C%200.1%29%2C%20%22metric%22%2C%20%22power%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28nvidia_smi_memory_used_bytes%7Bjob%3D%22nvidia-gpu-exporter-tokoyo%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22vram%22%2C%20%22%22%2C%20%22%22%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "GPU"; format = "float"; suffix = " %"; }
+                  { field = "data.result.1.value.1"; label = "GPU temp"; format = "float"; suffix = " °C"; }
+                  { field = "data.result.2.value.1"; label = "Power"; format = "float"; suffix = " W"; }
+                  { field = "data.result.3.value.1"; label = "VRAM"; format = "float"; suffix = " GiB"; }
                 ];
               };
             };

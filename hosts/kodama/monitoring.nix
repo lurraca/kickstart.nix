@@ -120,6 +120,17 @@
         static_configs = [{ targets = [ "100.113.33.92:9100" ]; }];
       }
       {
+        # nvidia_gpu_exporter on tokoyo — the SAME exporter as the Windows job
+        # below (utkuozdemir/nvidia_gpu_exporter, 1.13.1 from the AUR), so the
+        # metric names are identical and the existing GPU panels work unchanged.
+        # Installed 11 Sep 2026 with `omarchy pkg aur add`.
+        #
+        # ⚠️ Unit is nvidia-gpu-exporter.service (hyphens) — the AUR package
+        # renames it from the upstream nvidia_gpu_exporter.
+        job_name = "nvidia-gpu-exporter-tokoyo";
+        static_configs = [{ targets = [ "100.113.33.92:9835" ]; }];
+      }
+      {
         # nvidia_gpu_exporter, native Windows service on kasasagi via NSSM
         # (winget install, same pattern as windows_exporter above — the WSL
         # + systemd --user route hit a PATH gotcha for nvidia-smi and would
