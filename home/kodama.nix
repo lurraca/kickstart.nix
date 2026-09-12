@@ -41,6 +41,18 @@
     # ⚠️ BYO model — needs an API key in ~/.secrets/env (sourced by zsh below),
     # which is pay-per-token, unlike a flat Claude subscription.
     pi-coding-agent
+
+    # Terminal workspace manager for agents. 0.9.0 is the version that added
+    # `herdr machine`, so one client on tokoyo can hold Local and this box in
+    # the same sidebar instead of a separate window per machine — which is the
+    # only reason it is here rather than on tokoyo alone.
+    # Reaching it required bumping the nixpkgs input past 2026-08-28; nixpkgs
+    # had 0.8.2 pinned, which has no `machine` command at all.
+    # ⚠️ Keep tmux. The phone workflow above depends on it, and Herdr's keymap
+    # here is upstream's (ctrl+b) — Omarchy's ctrl+space config is a tokoyo
+    # file and nothing copies it across.
+    # `herdr integration install pi` adds agent-state detection for pi.
+    herdr
   ];
 
   home.sessionPath = [ "$HOME/.local/bin" ];
