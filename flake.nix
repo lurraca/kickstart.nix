@@ -45,6 +45,9 @@
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
           home-manager.extraSpecialArgs = { inherit inputs; };
+          # Back up pre-existing regular files (e.g. firstmate config files
+          # previously hand-placed) instead of failing activation.
+          home-manager.backupFileExtension = "hm-backup";
           home-manager.users."luis.urraca" = homeManagerConfig;
         }
       ];

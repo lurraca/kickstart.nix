@@ -1,4 +1,8 @@
 {pkgs, ...}: {
+  imports = [
+    ./firstmate.nix
+  ];
+
   home.packages = with pkgs; [
     awscli2
     saml2aws

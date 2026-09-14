@@ -31,6 +31,7 @@
     "nikitabobko/tap/aerospace"
     "claude"
     "claude-code"
+    "cmux"
     "cursor"
     "cursor-cli"
     "docker-desktop"

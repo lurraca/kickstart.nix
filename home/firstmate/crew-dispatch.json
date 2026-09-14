@@ -1,0 +1,30 @@
+{
+  "rules": [
+    {
+      "when": "Scout or read-only reconnaissance: gather facts, trace code paths, answer a question. No code changes.",
+      "use": { "harness": "pi", "model": "ai-gateway-fireworks/accounts/fireworks/models/glm-5p3-flash", "effort": "max" },
+      "why": "Daily driver per captain 2026-09-10: GLM 5.3 Flash at max reasoning. Replaces Luna."
+    },
+    {
+      "when": "Mechanical ship: rote edit, config-data entry, two-line fix, trim/squash; the brief fully specifies the change.",
+      "use": { "harness": "pi", "model": "ai-gateway-fireworks/accounts/fireworks/models/glm-5p3-flash", "effort": "max" },
+      "why": "Daily driver per captain 2026-09-10: GLM 5.3 Flash at max reasoning. Replaces Luna."
+    },
+    {
+      "when": "Ordinary ticket ship: single-repo PR needing real judgment.",
+      "use": { "harness": "pi", "model": "ai-gateway-fireworks/accounts/fireworks/models/glm-5p3-flash", "effort": "max" },
+      "why": "Daily driver per captain 2026-09-10: GLM 5.3 Flash at max reasoning. Replaces Luna."
+    },
+    {
+      "when": "Ambiguous or risky: cross-repo design, firstmate-repo machinery, schema or irreversible changes, subtle infra behavior.",
+      "use": { "harness": "pi", "model": "ai-gateway-fireworks/accounts/fireworks/models/kimi-k3", "effort": "high" },
+      "why": "Strongest catalog-listed model available while Opus/Sol are blocked; proven with MCP through Pi. glm-5p3 works via ID passthrough but is deliberately avoided until it lands in the catalog."
+    },
+    {
+      "when": "Work that specifically needs Claude Code (claude-only skills, claude-specific workflows).",
+      "use": { "harness": "claude", "model": "sonnet", "effort": "medium" },
+      "why": "Escape hatch only; Sonnet restriction starts 2026-09-07 so this rule has an expiry date."
+    }
+  ],
+  "default": { "harness": "pi", "model": "ai-gateway-fireworks/accounts/fireworks/models/glm-5p3-flash", "effort": "max" }
+}
