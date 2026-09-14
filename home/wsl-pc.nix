@@ -170,6 +170,11 @@
 
   programs.zsh.shellAliases = {
     "hms" = "nix flake update claude-code --flake ~/nix-config && home-manager switch --flake ~/nix-config#$USER";
+    # WSL clipboard integration: Windows interop exists only on this host,
+    # so these aliases live here and not in shared/shell.nix.
+    "clip" = "/mnt/c/Windows/System32/clip.exe";
+    "pbcopy" = "clip.exe";
+    "pbpaste" = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -command 'Get-Clipboard' | tr -d '\r'";
   };
 
   # Source local secrets into shell (for tools that need env vars)

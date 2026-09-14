@@ -7,6 +7,8 @@
     CLAUDE_CODE_DISABLE_AUTO_MEMORY = "0";
     EDITOR = "nvim";
     SHELL = "${pkgs.zsh}/bin/zsh";
+    # Enables the Secure Enclave-backed SSH key (~/.ssh/id_ecdsa_sk) for GitHub auth.
+    SSH_SK_PROVIDER = "/usr/lib/ssh-keychain.dylib";
   };
 
   # Local bin for uvx, uv, and other user-installed tools (was in ~/.zprofile).
@@ -103,10 +105,9 @@
     "v" = "nvim";
     "vi" = "nvim";
     "vim" = "nvim";
-    # WSL clipboard integration
-    "clip" = "/mnt/c/Windows/System32/clip.exe";
-    "pbcopy" = "clip.exe";
-    "pbpaste" = "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -command 'Get-Clipboard' | tr -d '\r'";
+    # WSL clipboard integration lives in wsl-pc.nix: these aliases need
+    # Windows interop (/mnt/c), so they must not leak to the macOS or Linux hosts
+    # that also import this shared file.
   };
 
     syntaxHighlighting = {
