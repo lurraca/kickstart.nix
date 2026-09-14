@@ -5,7 +5,9 @@
     ./shared/shell.nix
     ./shared/editor.nix
     ./shared/tmux.nix
+    ./shared/herdr.nix
     ./darwin/packages.nix
+    ./darwin/homelab-ssh.nix
     ./work.nix
   ];
 

@@ -130,6 +130,12 @@
       # means an ACL mistake locks you out of the box that hosts the alarm,
       # the photos and the backups.
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN6ZiYvYEvnM750GwQFryWMDOP9rI/kEG//pRugvsTXN termius@phone"
+      # Work Mac (X7X56XWY9W), added 14 Sep 2026, for herdr + SSH over the home
+      # LAN only (no Tailscale on that machine). Private key file on the Mac, no
+      # passphrase by choice; copy in 1Password. EMPLOYER-OWNED: remove this line
+      # when the laptop goes back. Note passwordless sudo below, so this key is
+      # effectively root here.
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA/hchQVpRFjp5bAuhwqGQoCgILwU/hQURH4elnZZAXJ luis.urraca@work-mac homelab"
     ];
   };
   programs.zsh.enable = true;
