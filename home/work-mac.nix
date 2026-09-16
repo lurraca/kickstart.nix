@@ -14,4 +14,7 @@
 
   home.stateVersion = "23.11";
   programs.home-manager.enable = true;
+
+  # Hide desktop icons (macOS "Show Items → On Desktop" toggle)
+  targets.darwin.defaults."com.apple.finder".CreateDesktop = false;
 }

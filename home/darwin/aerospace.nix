@@ -88,6 +88,20 @@
   ) allEntries);
 
   # ---------------------------------------------------------------------------
+  # Pin apps to workspaces: every new window of these app-ids is moved to the
+  # given workspace on detection. Find app-ids with:
+  #   defaults read /Applications/<App>.app/Contents/Info CFBundleIdentifier
+  # ---------------------------------------------------------------------------
+  workspaceAssignments = [
+    { app-id = "org.alacritty"; workspace = "1"; }          # Terminal
+    { app-id = "company.thebrowser.Browser"; workspace = "2"; }  # Arc
+    { app-id = "com.google.Chrome"; workspace = "2"; }     # Chrome
+    { app-id = "com.tinyspeck.slackmacgap"; workspace = "2"; }   # Slack
+    { app-id = "com.1password.1password"; workspace = "5"; }     # 1Password
+    { app-id = "com.apple.finder"; workspace = "3"; }       # Finder
+  ];
+
+  # ---------------------------------------------------------------------------
   # Cheatsheet HTML, generated from the same `categories` table.
   # ---------------------------------------------------------------------------
 
@@ -160,8 +174,9 @@
   # The cask is installed via lib/homebrew.nix and manages its own login item.
   # ---------------------------------------------------------------------------
   aerospaceConfig = {
-    start-at-login = true;
-
+    # NOTE: 'start-at-login' was removed — deprecated in AeroSpace >=0.18
+    # (causes a config warning). Login launch is handled by the cask's own
+    # login item / launchd agent.
     enable-normalization-flatten-containers = true;
     enable-normalization-opposite-orientation-for-nested-containers = true;
 
@@ -169,6 +184,11 @@
     default-root-container-orientation = "auto";
 
     on-focused-monitor-changed = [ "move-mouse monitor-lazy-center" ];
+
+    on-window-detected = map (a: {
+      if-app-id = a.app-id;
+      run = [ "move-node-to-workspace ${a.workspace}" ];
+    }) workspaceAssignments;
 
     gaps = {
       inner.horizontal = 8;
