@@ -37,7 +37,7 @@
     "docker-desktop"
     "github"
     "karabiner-elements"
-    "logi-options-plus"
+    "logi-options+"
     "notion"
     "obs"
     "obsidian"
