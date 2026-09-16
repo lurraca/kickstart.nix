@@ -29,6 +29,15 @@
       # non-intercepted hosts.
       ssl-cert-file = "/Users/luis.urraca/.netskope-cert-bundle.pem";
     };
+    # Keep /nix/store from growing forever: old system generations pin their
+    # full ~8GiB closure each, and without GC they accumulate (33 gens ≈ 150GiB).
+    gc = {
+      automatic = true;
+      interval = { Weekday = 1; Hour = 3; Minute = 0; }; # Mondays 03:00
+      options = "--delete-older-than 7d";
+    };
+    # Hardlink identical files in the store to dedup closure bloat.
+    settings.auto-optimise-store = true;
   };
 
   system = {
