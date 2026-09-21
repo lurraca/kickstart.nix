@@ -186,7 +186,9 @@
     on-focused-monitor-changed = [ "move-mouse monitor-lazy-center" ];
 
     on-window-detected = map (a: {
-      if-app-id = a.app-id;
+      # v2 callback syntax: if = 'test %{app-bundle-id} = <id>'
+      # (the old dotted if.app-id is soft-deprecated; hyphenated if-app-id was never valid)
+      "if" = "test %{app-bundle-id} = ${a.app-id}";
       run = [ "move-node-to-workspace ${a.workspace}" ];
     }) workspaceAssignments;
 
