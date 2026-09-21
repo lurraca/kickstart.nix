@@ -25,7 +25,7 @@
 
   homebrew.casks = [
     "1password"
-    "arc"
+    "zen-browser"
     # Cask (not nixpkgs) so the Accessibility grant targets the stable
     # /Applications path instead of a versioned /nix/store path.
     "nikitabobko/tap/aerospace"

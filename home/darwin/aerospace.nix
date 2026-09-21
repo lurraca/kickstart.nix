@@ -26,8 +26,8 @@
       { key = "ctrl-alt-cmd-space"; desc = "Raycast (hotkey set in Raycast prefs)"; }
       { key = "ctrl-alt-cmd-c"; desc = "Keybind cheatsheet";
         cmd = "exec-and-forget open ~/.config/aerospace/cheatsheet.html"; }
-      { key = "ctrl-alt-cmd-b"; desc = "Browser (Arc)";
-        cmd = "exec-and-forget open -a Arc"; }
+      { key = "ctrl-alt-cmd-b"; desc = "Browser (Zen)";
+        cmd = "exec-and-forget open -na Zen"; }
       { key = "ctrl-alt-cmd-e"; desc = "Files (Finder)";
         cmd = "exec-and-forget open -a Finder"; }
     ]; }
@@ -94,7 +94,7 @@
   # ---------------------------------------------------------------------------
   workspaceAssignments = [
     { app-id = "org.alacritty"; workspace = "1"; }          # Terminal
-    { app-id = "company.thebrowser.Browser"; workspace = "2"; }  # Arc
+    { app-id = "app.zen-browser.zen"; workspace = "2"; }   # Zen Browser
     { app-id = "com.google.Chrome"; workspace = "2"; }     # Chrome
     { app-id = "com.tinyspeck.slackmacgap"; workspace = "2"; }   # Slack
     { app-id = "com.1password.1password"; workspace = "5"; }     # 1Password
