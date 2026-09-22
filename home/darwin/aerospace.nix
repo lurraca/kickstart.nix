@@ -206,6 +206,22 @@
 
   aerospaceToml = (pkgs.formats.toml {}).generate "aerospace.toml" aerospaceConfig;
 
+  # ---------------------------------------------------------------------------
+  # Login launch. NOTE: the cask does NOT register a login item (learned the
+  # hard way — after removing deprecated 'start-at-login' from the config,
+  # AeroSpace stopped launching at boot entirely). We manage a launchd agent
+  # here instead: RunAtLoad starts it at login, KeepAlive=false means quitting
+  # it manually is respected.
+  # ---------------------------------------------------------------------------
+  launchd.agents.aerospace = {
+    enable = true;
+    config = {
+      ProgramArguments = [ "/usr/bin/open" "-Wa" "/Applications/AeroSpace.app" ];
+      RunAtLoad = true;
+      KeepAlive = false;
+    };
+  };
+
 in {
   home.file.".config/aerospace/aerospace.toml".source = aerospaceToml;
   home.file.".config/aerospace/cheatsheet.html".source = cheatsheet;
