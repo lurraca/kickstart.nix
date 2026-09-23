@@ -174,9 +174,12 @@
   # The cask is installed via lib/homebrew.nix and manages its own login item.
   # ---------------------------------------------------------------------------
   aerospaceConfig = {
-    # NOTE: 'start-at-login' was removed — deprecated in AeroSpace >=0.18
-    # (causes a config warning). Login launch is handled by the cask's own
-    # login item / launchd agent.
+    # Login launch. 'start-at-login' is deprecated (parse warning), but it is
+    # the ONLY mechanism proven to launch AeroSpace at login on this setup:
+    # the cask registers no login item, and home-manager's launchd.agents
+    # silently produced an empty home-manager-agents output (verified 22 Sep).
+    start-at-login = true;
+
     enable-normalization-flatten-containers = true;
     enable-normalization-opposite-orientation-for-nested-containers = true;
 
@@ -207,20 +210,14 @@
   aerospaceToml = (pkgs.formats.toml {}).generate "aerospace.toml" aerospaceConfig;
 
   # ---------------------------------------------------------------------------
-  # Login launch. NOTE: the cask does NOT register a login item (learned the
-  # hard way — after removing deprecated 'start-at-login' from the config,
-  # AeroSpace stopped launching at boot entirely). We manage a launchd agent
-  # here instead: RunAtLoad starts it at login, KeepAlive=false means quitting
-  # it manually is respected.
+  # Login launch. 'start-at-login' is deprecated in favor of the app's own
+  # login-item / launchd integration, BUT: the cask registers no login item,
+  # and home-manager's launchd.agents option silently produces an empty
+  # home-manager-agents output on this setup (verified 22 Sep — empty store
+  # path, no plist in ~/Library/LaunchAgents). This key is the only mechanism
+  # proven to launch AeroSpace at login here. Keep despite the parse warning.
   # ---------------------------------------------------------------------------
-  launchd.agents.aerospace = {
-    enable = true;
-    config = {
-      ProgramArguments = [ "/usr/bin/open" "-Wa" "/Applications/AeroSpace.app" ];
-      RunAtLoad = true;
-      KeepAlive = false;
-    };
-  };
+  launchd.agents.aerospace = lib.mkRemovedOptionless { }; # placeholder no-op
 
 in {
   home.file.".config/aerospace/aerospace.toml".source = aerospaceToml;
