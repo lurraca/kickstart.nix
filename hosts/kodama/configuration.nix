@@ -136,6 +136,9 @@
       # when the laptop goes back. Note passwordless sudo below, so this key is
       # effectively root here.
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA/hchQVpRFjp5bAuhwqGQoCgILwU/hQURH4elnZZAXJ luis.urraca@work-mac homelab"
+      # tanuki (the T490s laptop), added 23 Sep 2026, so tanuki can reach
+      # kodama for herdr and cross-machine work over the tailnet.
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHMdQBiJhApuYCtramUuPYA+my9RNwLbrxojhRBAHDcm kasasagi@tanuki"
     ];
   };
   programs.zsh.enable = true;
