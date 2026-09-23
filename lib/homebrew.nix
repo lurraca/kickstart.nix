@@ -30,7 +30,9 @@
     # /Applications path instead of a versioned /nix/store path.
     "nikitabobko/tap/aerospace"
     "claude"
-    "claude-code"
+    # @latest variant tracks Anthropic's fast release channel (~daily) — the
+    # plain claude-code cask only moves when someone manually bumps it.
+    "claude-code@latest"
     "cmux"
     "cursor"
     "cursor-cli"
