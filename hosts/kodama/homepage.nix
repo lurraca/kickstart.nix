@@ -41,6 +41,9 @@
         # Homepage's homeassistant widget silently enforces (found by
         # deploying 5 in one card and watching the 5th vanish from the DOM).
         { "Energia" = { style = "row"; columns = 1; }; }
+        # Daily: the Japanese study page — opened every day, so it sits near
+        # the top rather than in the bookmarks at the bottom of the page.
+        { "Daily" = { style = "row"; columns = 1; }; }
         # kodama: HA link (plain) + main Prometheus card (CPU/RAM/power) +
         # disk free (3 volumes) + disk %used (3 volumes) — the local
         # resources widget was removed, so disk coverage moved here fully.
@@ -244,6 +247,22 @@
                   { state = "sensor.tariff_peak_active"; label = "peak 17:00–19:00 · €0.4731"; }
                 ];
               };
+            };
+          }
+        ];
+      }
+      {
+        "Daily" = [
+          {
+            # Static page served by HA's /local/ with a webhook back into HA
+            # that appends every tick and note to /config/study/log.jsonl.
+            # Source lives in robotina (hobbies/japanese/japanese-today.html);
+            # the webhook half is study.yaml in the homelab repo.
+            "日本語 Today" = {
+              href = "http://kodama:8123/local/japanese.html";
+              description = "Plan of the day — tick blocks, add notes";
+              icon = "mdi-translate";
+              siteMonitor = "http://127.0.0.1:8123/local/japanese.html";
             };
           }
         ];
