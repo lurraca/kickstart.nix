@@ -39,5 +39,16 @@
       AddKeysToAgent yes
       UseKeychain yes
       ForwardAgent no
+
+    # Relies on router DHCP DNS (search domain 'station') instead of a pinned
+    # IP — deliberate, for now. Add a reservation + HostName if it ever flakes.
+    Host tanuki
+      HostName tanuki.station
+      User kasasagi
+      IdentityFile ~/.ssh/id_ed25519_homelab
+      IdentitiesOnly yes
+      AddKeysToAgent yes
+      UseKeychain yes
+      ForwardAgent no
   '';
 }
