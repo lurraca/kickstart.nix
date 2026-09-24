@@ -505,12 +505,22 @@
         webhook_configs = [{
           # ⚠️ The webhook ID is a shared secret and THIS REPO IS PUBLIC, so the
           # URL lives in a file on the box. Same pattern as the HA bearer token.
-          url_file = "/srv/secrets/alertmanager-ha-webhook";
+          # Read through LoadCredential (below), NOT the /srv/secrets path: the
+          # service is DynamicUser and the file is root 0600, so reading it
+          # directly failed with "permission denied" on every alert from 3 to
+          # 24 Sep 2026 — nothing ever reached the phone.
+          url_file = "/run/credentials/alertmanager.service/ha-webhook";
           send_resolved = true;
         }];
       }];
     };
   };
+
+  # systemd copies the root-only secret into the unit's private credentials
+  # dir, readable by the dynamic user, without loosening the file itself.
+  systemd.services.alertmanager.serviceConfig.LoadCredential = [
+    "ha-webhook:/srv/secrets/alertmanager-ha-webhook"
+  ];
 
   services.prometheus.alertmanagers = [{
     static_configs = [{ targets = [ "127.0.0.1:9093" ]; }];
