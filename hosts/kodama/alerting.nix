@@ -406,6 +406,161 @@
         ];
       }
       {
+        # SMART data from smartctl_exporter (monitoring.nix). Level-based: the
+        # 24 Sep 2026 baseline is zero on every counter below, so any non-zero
+        # value is news. Both drives are SSDs; the ATA attribute names are the
+        # Samsung 860 EVO's, the smartctl_device_* ones cover the NVMe.
+        name = "disk-health";
+        rules = [
+          {
+            alert = "DiskSmartFailing";
+            expr = ''smartctl_device_smart_status{job="smartctl"} != 1'';
+            for = "5m";
+            labels.severity = "critical";
+            annotations = {
+              summary = "{{ $labels.device }} fails its SMART self-assessment";
+              description = "The drive itself reports it is failing. Check the latest restic snapshot is recent, then plan the replacement now.";
+            };
+          }
+          {
+            # Reallocated/uncorrectable sectors on the 860 EVO (sda, the
+            # media + photos disk); media errors or a critical-warning bit on
+            # the NVMe. The first bad sector is the useful warning — they
+            # rarely stay at one.
+            alert = "DiskErrorsAppearing";
+            expr = ''
+              (smartctl_device_attribute{job="smartctl",attribute_value_type="raw",
+                 attribute_name=~"Reallocated_Sector_Ct|Current_Pending_Sector|Offline_Uncorrectable|Uncorrectable_Error_Cnt|Reported_Uncorrect"} > 0)
+              or (smartctl_device_media_errors{job="smartctl"} > 0)
+              or (smartctl_device_critical_warning{job="smartctl"} > 0)
+            '';
+            for = "5m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.device }} is reporting errors";
+              description = "{{ $labels.attribute_name }} = {{ $value }} (was 0 on 24 Sep 2026). A drive that has started remapping sectors usually continues.";
+            };
+          }
+          {
+            # NVMe reports wear as % used; the 860 EVO as Wear_Leveling_Count's
+            # normalised value, counting DOWN from 100 (92 on 24 Sep 2026).
+            alert = "DiskWearingOut";
+            expr = ''
+              (smartctl_device_percentage_used{job="smartctl"} > 80)
+              or (smartctl_device_attribute{job="smartctl",attribute_name="Wear_Leveling_Count",attribute_value_type="value"} < 20)
+            '';
+            for = "1h";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.device }} is near its rated write endurance";
+              description = "Wear indicator {{ $value }}. Not an emergency, but time to buy the replacement.";
+            };
+          }
+          {
+            # Both idle at ~30 °C. 60 sustained means airflow is gone.
+            alert = "DiskTooHot";
+            expr = ''smartctl_device_temperature{job="smartctl",temperature_type="current"} > 60'';
+            for = "30m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.device }} is at {{ $value }} °C";
+              description = "Sustained for 30 minutes. Both drives idle around 30 °C.";
+            };
+          }
+          {
+            # Same alert-on-silence rule as ProbesMissing: no SMART data must
+            # not read as healthy drives.
+            alert = "DiskHealthUnknown";
+            expr = ''absent(smartctl_device_smart_status{job="smartctl"}) or (up{job="smartctl"} == 0)'';
+            for = "30m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "No SMART data from kodama's drives";
+              description = "smartctl_exporter is down or can no longer read the drives, so disk health is UNKNOWN rather than good.";
+            };
+          }
+        ];
+      }
+      {
+        # kodama itself: 8 threads, 23 GiB RAM (~18 GiB available on a normal
+        # day), CPU package ~40 °C idle with a 100 °C crit.
+        name = "host";
+        rules = [
+          {
+            alert = "HostCpuHot";
+            expr = ''max(node_hwmon_temp_celsius{job="node",chip="platform_coretemp_0"}) > 90'';
+            for = "10m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "kodama's CPU is at {{ $value }} °C";
+              description = "Above 90 °C for 10 minutes (crit is 100, idle ~40). Blocked vents, a dead fan, or something pinning the CPU.";
+            };
+          }
+          {
+            alert = "HostMemoryLow";
+            expr = ''node_memory_MemAvailable_bytes{job="node"} / node_memory_MemTotal_bytes{job="node"} < 0.10'';
+            for = "15m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "kodama has under 10% memory available";
+              description = "{{ $value | humanizePercentage }} available for 15 minutes. Usually one container growing — check `docker stats`.";
+            };
+          }
+          {
+            # The kernel has already killed something — the one memory event
+            # that is never a false positive.
+            alert = "HostOomKill";
+            expr = ''increase(node_vmstat_oom_kill{job="node"}[30m]) > 0'';
+            labels.severity = "warning";
+            annotations = {
+              summary = "The kernel killed a process for memory on kodama";
+              description = "{{ $value }} OOM kill(s) in the last 30 minutes. `journalctl -k | grep -i oom` names the victim.";
+            };
+          }
+          {
+            # 15-minute load above 2 per thread for an hour: not a busy moment
+            # (an Immich import legitimately spikes), a runaway.
+            alert = "HostOverloaded";
+            expr = ''node_load15{job="node"} / scalar(count(node_cpu_seconds_total{job="node",mode="idle"})) > 2'';
+            for = "1h";
+            labels.severity = "warning";
+            annotations = {
+              summary = "kodama has been overloaded for an hour";
+              description = "15-minute load is {{ $value }}× the thread count. Something is runaway — `top` or `docker stats`.";
+            };
+          }
+        ];
+      }
+      {
+        # 🔴 Added 24 Sep 2026 after finding that every alert since 3 Sep had
+        # failed to deliver (Alertmanager could not read the webhook secret).
+        # This rule is routed to ntfy ONLY (see the route below), so it still
+        # arrives when the Home Assistant path is what's broken — HA down,
+        # a bad token, a permission error. Needs the "alertmanager" scrape job.
+        name = "alerting";
+        rules = [
+          {
+            alert = "AlertDeliveryFailing";
+            expr = ''increase(alertmanager_notifications_failed_total{job="alertmanager"}[15m]) > 0'';
+            labels.severity = "critical";
+            annotations = {
+              summary = "kodama alerts are failing to reach the phone";
+              description = "Alertmanager failed {{ $value }} notification(s) in 15 minutes ({{ $labels.reason }}). Check Home Assistant is up and `journalctl -u alertmanager`.";
+            };
+          }
+          {
+            alert = "AlertmanagerUnscraped";
+            expr = ''absent(up{job="alertmanager"} == 1)'';
+            for = "15m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "Prometheus cannot see Alertmanager";
+              description = "Alertmanager is down or unscraped, so alerts may not be going anywhere.";
+            };
+          }
+        ];
+      }
+      {
         name = "system";
         rules = [
           {
@@ -498,6 +653,13 @@
         # Deliberately long. A backup being stale is not more actionable when
         # repeated hourly; it is just training to ignore the phone.
         repeat_interval = "12h";
+        # AlertDeliveryFailing goes to ntfy ONLY: it fires precisely when the
+        # HA path is broken, so sending it there too would be pointless. ntfy
+        # is the channel the watchers and the external watchdog already use.
+        routes = [{
+          matchers = [ ''alertname="AlertDeliveryFailing"'' ];
+          receiver = "ntfy";
+        }];
       };
 
       receivers = [{
@@ -512,6 +674,16 @@
           url_file = "/run/credentials/alertmanager.service/ha-webhook";
           send_resolved = true;
         }];
+      }
+      {
+        # The fallback channel. The file holds the watchers' ntfy topic URL +
+        # "?template=alertmanager" (ntfy's built-in formatter for this payload).
+        # The topic is a bearer credential — never in git.
+        name = "ntfy";
+        webhook_configs = [{
+          url_file = "/run/credentials/alertmanager.service/ntfy";
+          send_resolved = true;
+        }];
       }];
     };
   };
@@ -520,6 +692,7 @@
   # dir, readable by the dynamic user, without loosening the file itself.
   systemd.services.alertmanager.serviceConfig.LoadCredential = [
     "ha-webhook:/srv/secrets/alertmanager-ha-webhook"
+    "ntfy:/srv/secrets/alertmanager-ntfy"
   ];
 
   services.prometheus.alertmanagers = [{
