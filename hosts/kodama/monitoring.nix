@@ -120,6 +120,19 @@
         static_configs = [{ targets = [ "100.113.33.92:9100" ]; }];
       }
       {
+        # tanuki — the T490s couch/travel laptop, Omarchy, arrived 23 Sep 2026.
+        # Its OWN job, like node-tokoyo: kodama's dashboards, alerts and
+        # Homepage cards are all pinned to job="node", and every new node_*
+        # query must carry a job label (see the tokoyo block above).
+        #
+        # Tailnet address: tanuki is Wi-Fi only with no DHCP reservation, and
+        # it travels — the LAN address is meaningless off the home network.
+        # Reads "down" whenever the lid is shut or it is away; that is
+        # expected, and there is deliberately no up==0 / absent() alert.
+        job_name = "node-tanuki";
+        static_configs = [{ targets = [ "100.95.231.102:9100" ]; }];
+      }
+      {
         # nvidia_gpu_exporter on tokoyo — the SAME exporter as the Windows job
         # below (utkuozdemir/nvidia_gpu_exporter, 1.13.1 from the AUR), so the
         # metric names are identical and the existing GPU panels work unchanged.

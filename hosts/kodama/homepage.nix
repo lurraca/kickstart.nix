@@ -59,6 +59,8 @@
         # exist deliberately while Windows is kept as the parachute — each
         # reads "down" when the other is running, which is correct.
         { "tokoyo" = { style = "row"; columns = 4; }; }
+        # tanuki: the T490s travel laptop. Reads "down" when shut or away.
+        { "tanuki" = { style = "row"; columns = 4; }; }
         # The remaining 4 kodama services are uniform (icon + description
         # only), so a clean 2x2 grid with no ragged trailing row.
         { "Kodama services" = { style = "row"; columns = 2; }; }
@@ -568,6 +570,87 @@
                 type = "customapi";
                 refreshInterval = 10000;
                 url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20node_boot_time_seconds%7Bjob%3D%22node-tokoyo%22%7D%29%20%2F%2086400%2C%200.1%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "days up"; format = "float"; suffix = " d"; }
+                ];
+              };
+            };
+          }
+        ];
+      }
+      {
+        "tanuki" = [
+          {
+            "tanuki (Prometheus)" = {
+              href = "http://kodama:3000";
+              description = "CPU / RAM / temp / AC — the T490s travel laptop, Omarchy since 23 Sep 2026";
+              icon = "mdi-laptop";
+              # node_exporter on tanuki (job "node-tanuki", tailnet address).
+              # Every selector pinned to the job — see the tokoyo card.
+              # CPU temp is coretemp "Package id 0" joined via
+              # node_hwmon_sensor_label, the Intel counterpart of tokoyo's Tctl.
+              # No wall-power figure: there is no Tapo on a laptop, so the
+              # fourth stat is whether it is on AC (1) or battery (0).
+              widget = {
+                type = "customapi";
+                refreshInterval = 2000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28100%20-%20%28avg%28rate%28node_cpu_seconds_total%7Bjob%3D%22node-tanuki%22%2Cmode%3D%22idle%22%7D%5B1m%5D%29%29%20%2A%20100%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cpu%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_memory_MemAvailable_bytes%7Bjob%3D%22node-tanuki%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bjob%3D%22node-tanuki%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22ram%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28max%28node_hwmon_temp_celsius%7Bjob%3D%22node-tanuki%22%7D%20%2A%20on%28chip%2Csensor%29%20group_left%28%29%20node_hwmon_sensor_label%7Bjob%3D%22node-tanuki%22%2Clabel%3D%22Package%20id%200%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22cputemp%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28max%28node_power_supply_online%7Bjob%3D%22node-tanuki%22%2Cpower_supply%3D%22AC%22%7D%29%2C%20%22metric%22%2C%20%22ac%22%2C%20%22%22%2C%20%22%22%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "CPU"; format = "float"; suffix = " %"; }
+                  { field = "data.result.1.value.1"; label = "RAM"; format = "float"; suffix = " %"; }
+                  { field = "data.result.2.value.1"; label = "CPU temp"; format = "float"; suffix = " °C"; }
+                  { field = "data.result.3.value.1"; label = "on AC"; format = "number"; }
+                ];
+              };
+            };
+          }
+          {
+            "tanuki Battery · 57 Wh" = {
+              href = "http://kodama:3000";
+              description = "Charge / health vs design / draw / cycles — the pack it came with";
+              icon = "mdi-battery-heart-variant";
+              # Health = energy_full / energy_full_design. Measured 23 Sep 2026
+              # from sysfs: 42.23 / 57.02 Wh = 74 %. The number to watch before
+              # buying a replacement pack.
+              widget = {
+                type = "customapi";
+                refreshInterval = 10000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28node_power_supply_capacity%7Bjob%3D%22node-tanuki%22%2Cpower_supply%3D%22BAT0%22%7D%2C%20%22metric%22%2C%20%22charge%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20node_power_supply_energy_full%7Bjob%3D%22node-tanuki%22%2Cpower_supply%3D%22BAT0%22%7D%20%2F%20node_power_supply_energy_full_design%7Bjob%3D%22node-tanuki%22%2Cpower_supply%3D%22BAT0%22%7D%2C%200.1%29%2C%20%22metric%22%2C%20%22health%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_power_supply_power_watt%7Bjob%3D%22node-tanuki%22%2Cpower_supply%3D%22BAT0%22%7D%2C%200.1%29%2C%20%22metric%22%2C%20%22draw%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28node_power_supply_cyclecount%7Bjob%3D%22node-tanuki%22%2Cpower_supply%3D%22BAT0%22%7D%2C%20%22metric%22%2C%20%22cycles%22%2C%20%22%22%2C%20%22%22%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "charge"; format = "float"; suffix = " %"; }
+                  { field = "data.result.1.value.1"; label = "health"; format = "float"; suffix = " %"; }
+                  { field = "data.result.2.value.1"; label = "draw"; format = "float"; suffix = " W"; }
+                  { field = "data.result.3.value.1"; label = "cycles"; format = "number"; }
+                ];
+              };
+            };
+          }
+          {
+            "tanuki NVMe · 256 GB" = {
+              href = "http://kodama:3000";
+              description = "SK hynix BC511 — the stock drive, LUKS root";
+              icon = "mdi-harddisk";
+              widget = {
+                type = "customapi";
+                refreshInterval = 10000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node-tanuki%22%2Cmountpoint%3D%22%2F%22%7D%20%2F%201024%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22rootfree%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28100%20%2A%20%281%20-%20node_filesystem_avail_bytes%7Bjob%3D%22node-tanuki%22%2Cmountpoint%3D%22%2F%22%7D%20%2F%20node_filesystem_size_bytes%7Bjob%3D%22node-tanuki%22%2Cmountpoint%3D%22%2F%22%7D%29%2C%200.1%29%2C%20%22metric%22%2C%20%22rootpct%22%2C%20%22%22%2C%20%22%22%29%20or%20label_replace%28round%28node_filesystem_avail_bytes%7Bjob%3D%22node-tanuki%22%2Cmountpoint%3D%22%2Fboot%22%7D%20%2F%201024%20%2F%201024%2C%200.1%29%2C%20%22metric%22%2C%20%22bootfree%22%2C%20%22%22%2C%20%22%22%29";
+                mappings = [
+                  { field = "data.result.0.value.1"; label = "root free"; format = "float"; suffix = " GiB"; }
+                  { field = "data.result.1.value.1"; label = "root used"; format = "float"; suffix = " %"; }
+                  { field = "data.result.2.value.1"; label = "boot free"; format = "float"; suffix = " MiB"; }
+                ];
+              };
+            };
+          }
+          {
+            "tanuki Uptime" = {
+              href = "http://kodama:3000";
+              description = "Days since boot — suspend does not reset it";
+              icon = "mdi-clock-outline";
+              widget = {
+                type = "customapi";
+                refreshInterval = 10000;
+                url = "http://127.0.0.1:9090/api/v1/query?query=round%28%28time%28%29%20-%20node_boot_time_seconds%7Bjob%3D%22node-tanuki%22%7D%29%20%2F%2086400%2C%200.1%29";
                 mappings = [
                   { field = "data.result.0.value.1"; label = "days up"; format = "float"; suffix = " d"; }
                 ];
