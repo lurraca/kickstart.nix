@@ -34,6 +34,33 @@
     extraFlags = [ "--collector.textfile.directory=/var/lib/node-exporter/textfile" ];
   };
 
+  # ── Disk health (SMART) ─────────────────────────────────────────────────
+  # Added 24 Sep 2026: until then nothing watched the drives themselves, only
+  # their free space. Both are SSDs — the NVMe root (Samsung PM991a, ~500 h)
+  # and the LUKS media/photos disk (Samsung 860 EVO 2TB, ~64,500 h ≈ 7.4 years,
+  # wear-levelling at 92%). Baseline on the day: 0 reallocated, 0 uncorrectable,
+  # 0 CRC, 0 NVMe media errors, both at 30 °C.
+  #
+  # smartctl_exporter reads SMART on each scrape (rules in alerting.nix →
+  # "disk-health"). smartd adds the periodic self-tests, whose results the
+  # drives record and the exporter then reports; its own notifications have
+  # nowhere to go (no mail on this box), which is why the exporter exists.
+  services.smartd = {
+    enable = true;
+    # Short self-test Sundays in the 05:00 hour, long on the 1st of the month
+    # in the 06:00 hour (smartd schedules by the hour) — clear of the 03:00
+    # restic run. Both run online; nothing stops.
+    defaults.monitored = "-a -o on -s (S/../../7/05|L/../01/./06)";
+  };
+
+  services.prometheus.exporters.smartctl = {
+    enable = true;
+    listenAddress = "127.0.0.1";
+    port = 9633;
+    # Default scrape interval of SMART data is 60s; the drives do not change
+    # faster than that and each read wakes them.
+  };
+
   # ── Prometheus ──────────────────────────────────────────────────────────
   services.prometheus = {
     enable = true;
@@ -73,6 +100,19 @@
       {
         job_name = "pihole";
         static_configs = [{ targets = [ "127.0.0.1:9666" ]; }];
+      }
+      {
+        job_name = "smartctl";
+        static_configs = [{ targets = [ "127.0.0.1:9633" ]; }];
+      }
+      {
+        # Alertmanager's own metrics — specifically
+        # alertmanager_notifications_failed_total, which is how
+        # AlertDeliveryFailing (alerting.nix) notices the phone path is broken.
+        # Nothing scraped this before 24 Sep, which is why 308 failed
+        # deliveries between 3 and 24 Sep went unnoticed.
+        job_name = "alertmanager";
+        static_configs = [{ targets = [ "127.0.0.1:9093" ]; }];
       }
       {
         # Home Assistant's built-in prometheus integration. This is what makes
