@@ -348,4 +348,133 @@ $link" "$NTFY" >/dev/null
       Persistent = true;
     };
   };
+
+  # ── CeX Ireland restock watch (drives) ───────────────────────────────────
+  #
+  # Why this exists: on 25 Sep 2026 a Lite-On CA6-8D512 (512 GB NVMe, 2280)
+  # sat on CeX at €30 — and was at stock 0 by the time anyone checked. CeX
+  # stock is mostly sold-out boxes (31 of 670 NVMe listings in stock that day)
+  # that flicker back in when someone trades one in. A good one goes in hours.
+  #
+  # 🎯 NO BROWSER NEEDED. ie.webuy.com's own list API (wss2.cex.ie.webuy.io
+  # /v3/boxes?q=) 403s from here, but the site searches through ALGOLIA
+  # (search.webuy.io, index prod_cex_ie), and that answers plain curl. The key
+  # below is Algolia's public SEARCH-ONLY key, shipped in every page CeX
+  # serves — not a secret, and it can't write anything.
+  #
+  # ⚠️ SOLD-OUT BOXES KEEP THEIR LAST PRICE. A "2 TB for €60" in the index can
+  # be a box with zero stock. So the alert is a TRANSITION — a box becomes an
+  # in-stock deal (restocked, newly listed, or repriced into the band) — never
+  # "a cheap price exists".
+  #
+  # 🔔 Delivery is the HA Companion push, not ntfy: a test to the ntfy topic
+  # never arrived on 25 Sep. The webhook URL (a bearer credential) lives in
+  # /srv/secrets/cex-watch.env; the receiving automation is deals.yaml in the
+  # homelab repo.
+  #
+  # Same two rules as parts-watch: the first run primes silently, and a failed
+  # poll exits quietly WITHOUT touching state (an empty poll saved as state
+  # would make every in-stock deal look "new" next time).
+  systemd.services.cex-watch = {
+    description = "Watch CeX Ireland for drives back in stock at a good price → HA push";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    path = [ pkgs.curl pkgs.jq pkgs.gawk pkgs.gnused pkgs.coreutils ];
+    serviceConfig = {
+      Type = "oneshot";
+      StateDirectory = "cex-watch";
+      EnvironmentFile = "/srv/secrets/cex-watch.env";
+      ExecStart = pkgs.writeShellScript "cex-watch" ''
+        set -u
+        : "''${HA_WEBHOOK:?HA_WEBHOOK not set in /srv/secrets/cex-watch.env}"
+        API="https://search.webuy.io/1/indexes/*/queries?x-algolia-api-key=bf79f2b6699e60a18ae330a1248b452c&x-algolia-application-id=LNNFEEWZVA"
+        now="$STATE_DIRECTORY/now.tsv"
+        prev="$STATE_DIRECTORY/state.tsv"
+        : > "$now"
+
+        # fetch <CeX category> <max €/TB> <min GB>
+        # Appends one line per box: id, price, stock, GB, deal(0/1), category, name.
+        # Deal = in the €/TB band, big enough to matter, and not a form factor
+        # that fits nothing here (2230/2242, mSATA, IDE, external/USB).
+        fetch() {
+          body=$(jq -nc --arg c "$1" '{requests:[{indexName:"prod_cex_ie",query:"",hitsPerPage:1000,
+            facetFilters:[["categoryFriendlyName:"+$c]],
+            attributesToRetrieve:["boxId","boxName","sellPrice","ecomQuantity","collectionQuantity"]}]}')
+          resp=$(curl -s --max-time 30 -w '\n%{http_code}' -X POST "$API" \
+            -H 'Content-Type: application/json' -H 'Origin: https://ie.webuy.com' -d "$body") || return 1
+          [ "$(printf '%s' "$resp" | tail -n1)" = "200" ] || return 1
+          printf '%s' "$resp" | sed '$d' | jq -er --arg c "$1" --argjson max "$2" --argjson min "$3" '
+            .results[0].hits as $h
+            | if ($h | length) < 50 then error("only \($h | length) hits — refusing a partial poll") else $h[] end
+            | .boxName as $n
+            | ([$n | match("(?<![A-Za-z0-9])([0-9]+(?:\\.[0-9]+)?) ?(TB|GB)(?![A-Za-z])"; "gi")
+                | .captures | (.[0].string | tonumber) * (if (.[1].string | ascii_upcase) == "TB" then 1000 else 1 end)]
+                | max // 0) as $gb
+            | ((.ecomQuantity // 0) + (.collectionQuantity // 0)) as $stock
+            | ($gb >= $min and (.sellPrice // 0) > 0 and (.sellPrice / $gb * 1000) <= $max
+               and ($n | test("2230|2242|msata|external|portable|usb|\\bide\\b"; "i") | not)) as $deal
+            | [.boxId, .sellPrice, $stock, ($gb | floor), (if $deal then 1 else 0 end), $c, $n] | @tsv
+          ' >> "$now" || return 1
+        }
+
+        # Bands: NVMe/SATA SSD ≤ €80/TB (1 TB NVMe benchmark: €75–92, what
+        # was actually paid: €80), HDD ≤ €20/TB (best Irish used 4 TB: €75).
+        fetch "NVMe SSDs"        80 480  \
+          && fetch "SATA SSDs"        80 480  \
+          && fetch "SATA Hard Drives" 20 2000 \
+          || { echo "poll failed — skipping, state untouched"; rm -f "$now"; exit 0; }
+
+        if [ ! -f "$prev" ]; then
+          mv "$now" "$prev"
+          echo "primed (no alert): $(wc -l < "$prev") boxes, $(awk -F'\t' '$3>0 && $5==1' "$prev" | wc -l) in-stock deals"
+          exit 0
+        fi
+
+        # New in-stock deal = deal now, in stock now, and last poll it was
+        # absent, out of stock, not a deal, or dearer.
+        awk -F'\t' 'NR==FNR { s[$1]=$3; p[$1]=$2; d[$1]=$5; next }
+          $5==1 && $3>0 && (!($1 in s) || s[$1]==0 || d[$1]==0 || p[$1]>$2)' \
+          "$prev" "$now" > "$STATE_DIRECTORY/alerts.tsv"
+
+        push() { # title message url
+          code=$(jq -nc --arg t "$1" --arg m "$2" --arg u "$3" '{title:$t, message:$m, url:$u}' \
+            | curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST \
+                -H 'Content-Type: application/json' -d @- "$HA_WEBHOOK")
+          [ "$code" = "200" ]
+        }
+
+        n=$(wc -l < "$STATE_DIRECTORY/alerts.tsv")
+        ok=1
+        if [ "$n" -gt 5 ]; then
+          # A restock wave — or a bug. One summary, not a burst of pushes.
+          push "CeX: $n drives back in stock" \
+            "$(sort -t$'\t' -k2,2n "$STATE_DIRECTORY/alerts.tsv" | head -5 | awk -F'\t' '{printf "€%s %s\n", $2, $7}')" \
+            "https://ie.webuy.com/search?stext=ssd" || ok=0
+          echo "alerted: summary of $n"
+        else
+          while IFS=$'\t' read -r id price stock gb deal cat name; do
+            per=$(awk -v p="$price" -v g="$gb" 'BEGIN { printf "%.0f", p / g * 1000 }')
+            if push "CeX deal: €$price — $cat" "$name
+        €$per/TB · $stock in stock" "https://ie.webuy.com/product-detail?id=$id"; then
+              echo "alerted: €$price $name"
+            else
+              echo "push FAILED for $name"; ok=0
+            fi
+          done < "$STATE_DIRECTORY/alerts.tsv"
+        fi
+
+        # A failed push keeps the old state, so the same transition fires again
+        # next poll instead of being lost.
+        if [ "$ok" = "1" ]; then mv "$now" "$prev"; else rm -f "$now"; fi
+      '';
+    };
+  };
+
+  systemd.timers.cex-watch = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "*-*-* 08..23:00/20:00";
+      RandomizedDelaySec = "3m";
+    };
+  };
 }
