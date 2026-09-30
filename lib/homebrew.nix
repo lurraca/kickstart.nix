@@ -46,6 +46,7 @@
     "raycast"
     "shottr"
     "superlist"
+    "thaw"
     "zd_aws-sso"
   ];
 
