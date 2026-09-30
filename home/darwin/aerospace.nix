@@ -171,15 +171,10 @@
   # The app runs from the Homebrew cask at /Applications/AeroSpace.app so that
   # the macOS Accessibility (TCC) grant survives package updates — a Nix store
   # path changes on every version bump and silently breaks the permission.
-  # The cask is installed via lib/homebrew.nix and manages its own login item.
+  # The cask is installed via lib/homebrew.nix; login launch is the launchd
+  # agent below.
   # ---------------------------------------------------------------------------
   aerospaceConfig = {
-    # Login launch. 'start-at-login' is deprecated (parse warning), but it is
-    # the ONLY mechanism proven to launch AeroSpace at login on this setup:
-    # the cask registers no login item, and home-manager's launchd.agents
-    # silently produced an empty home-manager-agents output (verified 22 Sep).
-    start-at-login = true;
-
     enable-normalization-flatten-containers = true;
     enable-normalization-opposite-orientation-for-nested-containers = true;
 
@@ -209,17 +204,27 @@
 
   aerospaceToml = (pkgs.formats.toml {}).generate "aerospace.toml" aerospaceConfig;
 
-  # ---------------------------------------------------------------------------
-  # Login launch. 'start-at-login' is deprecated in favor of the app's own
-  # login-item / launchd integration, BUT: the cask registers no login item,
-  # and home-manager's launchd.agents option silently produces an empty
-  # home-manager-agents output on this setup (verified 22 Sep — empty store
-  # path, no plist in ~/Library/LaunchAgents). This key is the only mechanism
-  # proven to launch AeroSpace at login here. Keep despite the parse warning.
-  # ---------------------------------------------------------------------------
-  launchd.agents.aerospace = lib.mkRemovedOptionless { }; # placeholder no-op
-
 in {
+  # ---------------------------------------------------------------------------
+  # Login launch. This launchd agent is the only launcher: a plist in
+  # ~/Library/LaunchAgents runs at every login regardless of the Login Items
+  # UI toggles. Do not also set start-at-login in aerospace.toml; with both,
+  # login starts two instances that fight over the windows (seen 30 Sep 2026).
+  # ---------------------------------------------------------------------------
+  launchd.agents.aerospace = {
+    enable = true;
+    config = {
+      # Run the binary directly (not via 'open') so launchd can supervise the
+      # actual process and distinguish crash from clean exit.
+      Program = "/Applications/AeroSpace.app/Contents/MacOS/AeroSpace";
+      RunAtLoad = true;
+      KeepAlive = {
+        Crashed = true;          # relaunch if it dies unexpectedly
+        SuccessfulExit = false;  # ...but a deliberate quit stays quit
+      };
+      ProcessType = "Interactive";
+    };
+  };
   home.file.".config/aerospace/aerospace.toml".source = aerospaceToml;
   home.file.".config/aerospace/cheatsheet.html".source = cheatsheet;
   home.file.".config/karabiner/assets/complex_modifications/caps-hyper.json".source =
