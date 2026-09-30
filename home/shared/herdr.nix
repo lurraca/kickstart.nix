@@ -16,16 +16,20 @@
   # Reaching it required bumping the nixpkgs input past 2026-08-28; nixpkgs
   # had 0.8.2 pinned, which has no `machine` command at all.
   # The keymap is no longer upstream's (ctrl+b): config.toml below is
-  # home-manager-owned and mirrors tokoyo's ctrl+space, so the prefix is the
-  # same on both machines. Copied by hand 12 Sep, declared here the same day.
+  # home-manager-owned. It mirrored tokoyo's ctrl+space until 24 Sep, when the
+  # Mac's prefix moved to ctrl+a (macOS/Alacritty swallows ctrl+space before
+  # herdr sees it — see the [keys] note below). Copied by hand 12 Sep.
   # `herdr integration install pi` adds agent-state detection for pi.
   home.packages = [ pkgs.herdr ];
 
-  # Herdr's keymap, kept identical to tokoyo's so muscle memory carries across
-  # machines. Upstream's default prefix is ctrl+b; Omarchy ships ctrl+space in
-  # /usr/share/omarchy/config/herdr/config.toml, and nothing copies that here,
-  # so it is declared rather than copied. `herdr server reload-config` applies
-  # it to an already-running server without restarting panes.
+  # Herdr's keymap. Was kept identical to tokoyo's for cross-machine muscle
+  # memory; the prefix now differs (ctrl+a here vs tokoyo's ctrl+space) because
+  # ctrl+space is unusable on macOS (see the [keys] note). Everything below the
+  # prefix is still shared. Upstream's default prefix is ctrl+b; Omarchy ships
+  # ctrl+space in /usr/share/omarchy/config/herdr/config.toml, and nothing
+  # copies that here, so it is declared rather than copied.
+  # `herdr server reload-config` applies it to a running server without
+  # restarting panes.
   xdg.configFile."herdr/config.toml".text = ''
     onboarding = false
     # Mirrors the Omarchy tmux config in config/tmux/tmux.conf
@@ -45,7 +49,12 @@
     new_cwd = "follow"
 
     [keys]
-    prefix = "ctrl+space"
+    # ctrl+a, not tokoyo's ctrl+space: on macOS in Alacritty, ctrl+space is
+    # swallowed before herdr sees it (it surfaces a Spotlight-like launcher),
+    # so the prefix never fired here. ctrl+a sends a clean control byte every
+    # terminal forwards. Cost: shell "jump to line start" is now prefix+a.
+    # tokoyo (Omarchy) still ships ctrl+space; update it by hand to match.
+    prefix = "ctrl+a"
 
     # Config and help
     reload_config = "prefix+q"
