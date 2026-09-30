@@ -2,6 +2,7 @@
   home.packages = with pkgs; [
     alejandra
     inputs.treehouse.packages.${pkgs.system}.default
+    glow
     lua5_1
     lua51Packages.luarocks
     nodejs_24
