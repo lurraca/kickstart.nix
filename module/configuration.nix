@@ -73,4 +73,16 @@
     home = "/Users/luis.urraca";
     shell = pkgs.zsh;
   };
+
+  # Touch ID (and Apple Watch) for sudo. Writes /etc/pam.d/sudo_local, the
+  # Apple-sanctioned drop-in that survives OS updates (unlike editing
+  # /etc/pam.d/sudo directly). reattach pulls in pam_reattach, which
+  # reattaches sudo to the user's bootstrap session so the Touch ID prompt
+  # still reaches the sensor when sudo runs under a session multiplexer that
+  # detaches from the GUI login session (tmux, screen, herdr). Without it,
+  # sudo in such a session falls back to the terminal password prompt.
+  security.pam.services.sudo_local = {
+    touchIdAuth = true;
+    reattach = true;
+  };
 }
