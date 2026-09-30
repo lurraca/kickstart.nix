@@ -183,6 +183,10 @@
 
     on-focused-monitor-changed = [ "move-mouse monitor-lazy-center" ];
 
+    # Omarchy-style: hovering a window focuses it, so Caps+w (close) acts on
+    # whatever is under the mouse. Available in AeroSpace >= 0.21 beta.
+    focus-follows-mouse.enabled = true;
+
     on-window-detected = map (a: {
       # v2 callback syntax: if = 'test %{app-bundle-id} = <id>'
       # (the old dotted if.app-id is soft-deprecated; hyphenated if-app-id was never valid)
