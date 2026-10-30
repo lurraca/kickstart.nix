@@ -24,9 +24,13 @@
     opencode.inputs.nixpkgs.follows = "nixpkgs";
     treehouse.url = "github:kunchenguid/treehouse";
     treehouse.inputs.nixpkgs.follows = "nixpkgs";
+    # oh-my-pi (omp): pi fork with LSP/DAP, REPLs, bundled catalog.
+    # Ships its own homeManagerModules (programs.omp). Consumed via
+    # home/shared/omp.nix on hosts that want it.
+    omp.url = "github:can1357/oh-my-pi";
   };
 
-  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl, claude-code, opencode, treehouse, disko }:
+  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl, claude-code, opencode, treehouse, disko, omp }:
   let
     systemConfig = import ./module/configuration.nix { username = "luis.urraca"; };
     homeManagerConfig = import ./home/work-mac.nix;
