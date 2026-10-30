@@ -85,4 +85,23 @@
     touchIdAuth = true;
     reattach = true;
   };
+
+  # Passwordless sudo for the coding agent, scoped to nix tooling only.
+  # The agent's exec context has no TTY, so interactive sudo can never
+  # prompt (Touch ID needs an interactive session). Whitelisted commands
+  # skip auth entirely; anything else goes through `agent-root` (the
+  # osascript admin-privileges dialog) or fails.
+  #
+  # File name must contain no '.' — sudoers.d skips dotted filenames.
+  # Syntax is kept trivial on purpose: a parse error here locks out sudo
+  # for the whole system. Change with care and validate with
+  #   agent-root visudo -cf /etc/sudoers.d/agent-nix
+  environment.etc."sudoers.d/agent-nix".text = let
+    sw = "/run/current-system/sw/bin";
+  in ''
+      # Managed by nix-darwin (module/configuration.nix). Do not edit.
+      luis.urraca ALL=(ALL) NOPASSWD: ${sw}/darwin-rebuild
+      luis.urraca ALL=(ALL) NOPASSWD: ${sw}/nix
+      luis.urraca ALL=(ALL) NOPASSWD: ${sw}/nix-collect-garbage
+    '';
 }

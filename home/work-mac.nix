@@ -6,6 +6,8 @@
     ./shared/editor.nix
     ./shared/tmux.nix
     ./shared/herdr.nix
+    ./shared/omp.nix
+    ./darwin/agent-root.nix
     ./darwin/packages.nix
     ./darwin/homelab-ssh.nix
     ./darwin/aerospace.nix
