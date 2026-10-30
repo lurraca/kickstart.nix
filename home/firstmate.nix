@@ -20,6 +20,6 @@
   home.file."code/firstmate/config/crew-dispatch.json".source = ./firstmate/crew-dispatch.json;
 
   home.file."code/firstmate/config/backend".text = ''
-    cmux
+    herdr
   '';
 }
