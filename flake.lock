@@ -443,11 +443,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793563154,
-        "narHash": "sha256-gfmg5EU8mB1sNR2mdJn0Oj28bLs42x3ittinhhp/Ly8=",
+        "lastModified": 1793563867,
+        "narHash": "sha256-w7kdrwSnYBgkf3od1UIfAZ8iYh65HbT0zPnT/9WeMV4=",
         "owner": "lurraca",
         "repo": "timew-api",
-        "rev": "cee9c2ad14f5d93fad33375ef1ae159204b67c8a",
+        "rev": "e8ec5672ccc6a4a4603a64eb3bff3353bed99caa",
         "type": "github"
       },
       "original": {
