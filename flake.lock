@@ -166,6 +166,7 @@
         "nixgl": "nixgl",
         "nixpkgs": "nixpkgs",
         "opencode": "opencode",
+        "timew-api": "timew-api",
         "treehouse": "treehouse"
       }
     },
@@ -196,6 +197,26 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "timew-api": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793559865,
+        "narHash": "sha256-3QOR9DOn2W7KdoaEOsU6NS7j0EHRtQd/uIJq1enP3WA=",
+        "owner": "lurraca",
+        "repo": "timew-api",
+        "rev": "bfbbdd6fc205635edb54e741a30aee1ed7bccb88",
+        "type": "github"
+      },
+      "original": {
+        "owner": "lurraca",
+        "repo": "timew-api",
         "type": "github"
       }
     },
