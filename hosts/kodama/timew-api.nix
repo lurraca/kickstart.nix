@@ -6,7 +6,7 @@
 # hostname and the Access policy live in the Cloudflare dashboard; the values
 # the service needs live in /srv/secrets, which is not in git:
 #
-#   /srv/secrets/timew-api.env         (0640 root:timew-api)
+#   /srv/secrets/timew-api.env         (0600 root:root; systemd reads it as root)
 #     TIMEW_API_CF_TEAM_DOMAIN=<team>.cloudflareaccess.com
 #     TIMEW_API_CF_AUD=<Access application AUD tag>
 #     TIMEW_API_PROJECT=<label for the weekly report>
