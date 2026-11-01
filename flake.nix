@@ -28,9 +28,11 @@
     # Ships its own homeManagerModules (programs.omp). Consumed via
     # home/shared/omp.nix on hosts that want it.
     omp.url = "github:can1357/oh-my-pi";
+    timew-api.url = "github:lurraca/timew-api";
+    timew-api.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl, claude-code, opencode, treehouse, disko, omp }:
+  outputs = inputs@{ self, home-manager, nix-darwin, nixpkgs, nixgl, claude-code, opencode, treehouse, disko, omp, timew-api }:
   let
     systemConfig = import ./module/configuration.nix { username = "luis.urraca"; };
     homeManagerConfig = import ./home/work-mac.nix;
@@ -78,6 +80,7 @@
         ./hosts/kodama/pihole.nix
         ./hosts/kodama/servarr.nix
         ./hosts/kodama/watchers.nix
+        ./hosts/kodama/timew-api.nix
         { nixpkgs.overlays = [ piOverlay ]; }
         home-manager.nixosModules.home-manager {
           home-manager.useGlobalPkgs = true;
