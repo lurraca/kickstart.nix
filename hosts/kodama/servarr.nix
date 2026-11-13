@@ -229,6 +229,23 @@
     group = "qbittorrent";
     profileDir = "/srv/qbittorrent";
     webuiPort = 8080;
+    # 🔴 Pinned to 5.2.x for MyAnonamouse. Its Allowed Clients list stops at
+    # "latest 5.2.x" and the tracker rejects every announce from 5.3.0
+    # (nixpkgs bumped to 5.3.0 on 20 Oct 2026). Lift the pin only once
+    # https://www.myanonamouse.net/tor/allowed_clients.php lists 5.3.x.
+    # 5.2.x does not compile against libtorrent 2.1 (nixpkgs' default since
+    # the same bump), so build it against the 2.0.x series it was released on.
+    package = (pkgs.qbittorrent-nox.override {
+      libtorrent-rasterbar = pkgs.libtorrent-rasterbar-2_0_x;
+    }).overrideAttrs (finalAttrs: _: {
+      version = "5.2.4";
+      src = pkgs.fetchFromGitHub {
+        owner = "qbittorrent";
+        repo = "qBittorrent";
+        rev = "release-${finalAttrs.version}";
+        hash = "sha256-HCfcwO8GEi4Ixfa+Ue2vgWyp407R3VDGRoLxUqJl1eM=";
+      };
+    });
     serverConfig = {
       # Same filesystem as the library, so *arr imports hardlink. See the
       # tmpfiles rule above for why this matters.
@@ -259,6 +276,57 @@
       # the host port is the only door.
       Preferences.WebUI.AuthSubnetWhitelistEnabled = true;
       Preferences.WebUI.AuthSubnetWhitelist = "10.200.200.1/32";
+
+      # 🔴 No queueing: every torrent seeds all the time. With the defaults
+      # (3 active uploads, 5 active total) 41 of 45 torrents sat in
+      # `queuedUP` on 11 Nov 2026 — invisible on a public tracker, a
+      # hit-and-run on MyAnonamouse, which needs 72 h of seeding per torrent
+      # within 30 days. DHT/PeX/LSD stay on: libtorrent already disables them
+      # for private torrents.
+      BitTorrent.Session.QueueingSystemEnabled = false;
+      # Bandwidth is protected by a speed cap instead of the queue: 7000 KiB/s
+      # ≈ 57 Mbit/s of the measured 101 Mbit/s home upload (Vodafone,
+      # speedtest-cli), leaving ~44 Mbit/s for Jellyfin streaming out.
+      BitTorrent.Session.GlobalUPSpeedLimit = 7000;
+    };
+  };
+
+  # MyAnonamouse "dynamic seedbox": MAM ties the account to an IP, and the
+  # client announces from the NordVPN exit (wg-vpn namespace) while browsing
+  # happens from the home IP. This keeps the VPN IP registered. The secret is
+  # the `mam_id` of a session created in MAM → Preferences → Security with
+  # "Allow session to set dynamic seedbox" ticked; it must be created from
+  # the VPN IP itself. MAM accepts at most one IP change per hour, and an
+  # unchanged IP answers "No change", so an hourly timer is safe.
+  systemd.services.mam-dynamic-seedbox = {
+    description = "Register the VPN exit IP with MyAnonamouse";
+    after = [ "wireguard-wg-vpn.service" ];
+    requires = [ "wireguard-wg-vpn.service" ];
+    unitConfig.ConditionPathExists = "/srv/secrets/mam-id";
+    serviceConfig = {
+      Type = "oneshot";
+      NetworkNamespacePath = "/run/netns/wg-vpn";
+      BindReadOnlyPaths = [ "/etc/netns/wg-vpn/resolv.conf:/etc/resolv.conf" ];
+      LoadCredential = "mam-id:/srv/secrets/mam-id";
+      DynamicUser = true;
+    };
+    script = ''
+      id=$(tr -d '[:space:]' < "$CREDENTIALS_DIRECTORY/mam-id")
+      out=$(${pkgs.curl}/bin/curl -sS -m 30 -b "mam_id=$id" \
+        https://t.myanonamouse.net/json/dynamicSeedbox.php)
+      echo "$out"
+      case "$out" in
+        *'"Success":true'*|*'No Change'*) ;;
+        *) exit 1 ;;
+      esac
+    '';
+  };
+  systemd.timers.mam-dynamic-seedbox = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "1h";
+      RandomizedDelaySec = "5min";
     };
   };
 
