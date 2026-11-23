@@ -214,10 +214,20 @@
     interfaceNamespace = "wg-vpn";
     peers = [
       {
-        # ie117.nordvpn.com, Dublin, 7% load at pick time (of 3 candidates
-        # checked — recommendations API sorts by load already).
-        publicKey = "WwpRem21dqdXwZF3qDqTe3rOxOBTPZIem8de5R17sCc=";
-        endpoint = "217.138.222.235:51820";
+        # uk6064.nordvpn.com, London, 10% load at pick time (22 Nov 2026).
+        # Replaced ie117 (217.138.222.235, Dublin), which Nord retired ~20
+        # Nov: it vanished from the server API and the tunnel sat with no
+        # handshake for 46 h, so qBittorrent was offline and not seeding.
+        # 🔴 The exit must stay on AS136787 (PacketHub): the MAM session is
+        # ASN-locked, and a Datacamp exit (ie232) got "Invalid session - ASN
+        # mismatch". No Irish Nord server is on PacketHub any more (IE is all
+        # Datacamp AS212238/AS60068 or M247 AS9009), so this is a UK one.
+        # Moving to another ASN means Luis creating a new MAM session.
+        # To re-pick: api.nordvpn.com/v1/servers?filters[country_id]=227
+        # (227 = UK; 104 = IE) &filters[servers_technologies][identifier]=
+        # wireguard_udp, check the station's ASN, swap publicKey + endpoint.
+        publicKey = "FTNRM6Kakn80adOLJA6eLpyOMVvx5S2SKF5CAecnsAM=";
+        endpoint = "187.13.135.72:51820";
         allowedIPs = [ "0.0.0.0/0" "::/0" ];
       }
     ];
